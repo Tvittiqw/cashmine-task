@@ -1,25 +1,50 @@
 {
   "name": "cashmine-task",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "dependencies": {
     "@expo/metro-runtime": "~58.0.15",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@tanstack/react-query": "^5.104.5",
     "expo": "~58.0.17",
+    "expo-constants": "~58.0.13",
+    "expo-crypto": "~58.0.7",
+    "expo-linking": "~58.0.14",
+    "expo-router": "~58.0.25",
     "expo-status-bar": "~58.0.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0",
     "react-native-web": "^0.21.4"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~58.0.4",
+    "jest": "^30.5.2",
+    "jest-expo": "^58.0.12",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "lint": "expo lint",
+    "test": "jest",
+    "export:web": "expo export --platform web"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/"
+    ]
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

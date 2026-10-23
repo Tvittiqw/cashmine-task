@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "cashmine-task",
+    "name": "CashMine",
     "slug": "cashmine-task",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,7 +19,25 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ],
+    "scheme": "cashmine",
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "bf98e7c3-218e-4040-b60c-df9d74ef2def"
+      }
+    },
+    "owner": "tvittiqw"
   }
 }
