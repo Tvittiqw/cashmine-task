@@ -35,5 +35,6 @@ The app asks for it on first open and keeps it in browser storage.
   - A status screen polls until the claim completes or fails.
 - **Tests:** amount parsing and formatting, validation, fee and receive, USD totals, API errors and
   response checks, the balance overlay after a claim, and claim re-sends.
-
-Not done: Activity history (see NOTES.md).
+- **Activity:** paginated history of paybacks, reversals and claims. Duplicate rows at page
+  boundaries are dropped, failed claims are shown as not deducted, and your own claims link to
+  their status.

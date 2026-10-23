@@ -21,7 +21,9 @@ https://tvittiqw-cashmine-task.expo.app.
 
 No push and no redeploy after 09:00.
 
-## Deliberately not done (already in NOTES.md → "Not done / known issues")
+## Update 08:53: T7 Activity built, browser pass done, overlay fix for claims that settle after the snapshot, deployed
+
+## Originally deferred (superseded by the update above)
 
 - **T7 Activity.** There isn't enough time to build it to the same standard. The approach is
   written down: an infinite list, duplicates dropped by `id` because the API's pages overlap by

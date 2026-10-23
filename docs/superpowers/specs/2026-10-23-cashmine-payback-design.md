@@ -196,6 +196,9 @@ Rules and edge cases:
    should never happen.
 8. **Ties.** `createdAt == asOf` counts as *already in the snapshot* (strict `>`). The worst case is
    at most one 15 s window that shows B behaviour.
+8b. **Settled after the snapshot** (added after browser testing). A claim created before `asOf`
+   but completed or failed after it is still in the snapshot's `claiming`. Completed: claiming −x.
+   Failed: claiming −x and available +x.
 9. **Risk.** C depends on `asOf` and `createdAt` coming from the same server clock. This is
    **verified once** in T6 with a real claim; if it doesn't hold, `applyTrackedClaims` becomes an
    identity function (option B) and NOTES.md says so.

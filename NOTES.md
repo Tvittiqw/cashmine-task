@@ -26,6 +26,10 @@
 - C only applies server-confirmed facts. It hands over to the server automatically once a newer
   snapshot arrives, so nothing jumps back. A failed claim is the only legitimate rise, and the app
   announces it with a banner.
+- It also applies settlements the snapshot hasn't seen. A claim that completed or failed after
+  `asOf` comes out of claiming; a failed one goes back to available. A browser test showed why:
+  without this, Home said "the amount is back" while the stale snapshot still showed it in
+  claiming.
 - Verified live: the first snapshot with `asOf > createdAt` already showed available −10 and
   claiming +10.
 - The claim form uses the overlaid balance too, so the same money can't be claimed twice. If the
@@ -95,12 +99,18 @@ redacted.
 
 ## Not done / known issues
 
-- **Activity (T7) is not built.** The plan was an infinite list that drops duplicates by `id`,
-  because the API's pages overlap by one item (observed, not documented).
-- **Untested in a real browser:**
-  - The full flows were tested only through unit tests, typecheck and the API.
-  - Next would be a pass at 390 px covering slow networks, a claim timeout followed by Check
-    status, and switching tokens.
+- **Browser testing:**
+  - A scripted headless Chrome pass at 390 px covered:
+    - a bad token, then a good one
+    - Home
+    - Activity with all its pages
+    - claim validation: a comma, below the minimum, too many decimals, Max, no destination
+    - review, submit, a status that failed and one that completed
+    - a reload that keeps the token
+    - Cancel on the change-token screen
+  - Not covered in the browser: a forced timeout followed by Check status. That path has unit
+    tests only.
+- **Activity's "Load more" button** is there because `onEndReached` is unreliable on web.
 - **Fee could change after review:**
   - The fee in the review comes from claim-options, refetched on entering review. The API takes no
     fee in the request, so a fee change between review and submit can't be prevented.

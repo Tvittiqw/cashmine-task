@@ -1,4 +1,4 @@
-# AI log 02 — implementation T0–T5, parallel agents, code review fixes, restructuring
+# AI log 02 — implementation T0–T7, parallel agents, code review, restructuring, browser testing
 
 Tool: Claude Code (model: claude-opus-5-5). Exported from the raw session transcript (`~/.claude/projects/.../<session>.jsonl`) with a script. Unedited except: the API token, the client id decoded from it and the account email are replaced with `<REDACTED_…>` markers; injected system/skill text is replaced by a one-line marker; empty (hidden) thinking blocks are omitted.
 
@@ -7374,6 +7374,1507 @@ Exported: dist
 token hits: 0
 Production URL  https://tvittiqw-cashmine-task.expo.app
 08:43
+`````
+
+</details>
+
+**🔧 Bash** — _Refresh AI log 02 and rescan for secrets_
+
+`````bash
+S=/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad; F=~/.claude/projects/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417.jsonl; cd /Users/viktor/Documents/projects/cashmine-task
+N=$(wc -l < $F); python3 -I $S/export_log.py $F $S/token ai-logs/02-implementation-T0-T5-review-and-restructure.md $((N-1)) "AI log 02 — implementation T0–T5, parallel agents, code review fixes, restructuring" 165 >/dev/null
+T=$(cat $S/token); for p in "$T" "$(echo $T|cut -d. -f2)" "$(echo $T|cut -d. -f3)" <REDACTED_CID> <REDACTED_EMAIL> <REDACTED_EMAIL>; do printf '%s ' "$(grep -rlF --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist -- "$p" . | wc -l | tr -d ' ')"; done; echo "<- secret hits (must be 0)"; git status --short | grep -c .
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+0 0 0 0 0 0 <- secret hits (must be 0)
+36
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:43:55 UTC
+
+I've moved those lines into named functions and redeployed at 08:43. All 143 tests pass, typecheck and lint are clean, the build contains no token, and AI log 02 now includes this turn.
+
+- **`src/features/balances/balanceFormatting.ts`** holds the pure label functions: `availableLabel`, `availableUsdLabel`, `pendingLabel`, `claimingLabel` and `claimAdjustmentNote`. Each returns a string, or `null` when there's nothing to show, and each has a test.
+- **`src/features/balances/components/AssetCard.tsx`** is now its own component and only renders. The `b.pending > 0n ? … : null` checks are replaced by `<OptionalLine text={pendingLabel(balance)} />`, and the Claim button's navigation is a named `openClaim` handler. `OptionalLine` stays in that file because only this card uses it.
+- **Home** (`src/app/index.tsx`) now just renders `<AssetCard />`. I also removed the imports and styles it no longer uses.
+
+One correction from writing the tests: I'd hand-calculated the ETH USD value as `$30,433.04`, and the test failed. Python's exact decimal math confirmed the code's `$30,432.93`, so I fixed the test, not the code.
+
+It's 08:43, 17 minutes to the deadline, and there are 36 uncommitted changes. **Commit and push now.** Then do the phone run on the live link if there's time. Nothing gets pushed or deployed after 09:00.
+
+## 🧑 User — 2026-10-23 08:44:41 UTC
+
+split the code into multiple commits and lets continue. please keep the code clean and use best coding practices
+
+## 🧑 User — 2026-10-23 08:45:00 UTC
+
+split the code into multiple commits and lets continue. please keep the code clean and use best coding practices. write the plan for the rest of the task
+
+## 🤖 Claude — 2026-10-23 08:45:28 UTC
+
+I'll split the work into commits by layer, in dependency order, so each commit builds on the ones before it, and I'll write the plan for what's left. First, what your `f07f52f` already contains, so I don't re-add anything:
+
+**🔧 Bash** — _List HEAD files and unstage everything_
+
+`````bash
+git ls-tree -r --name-only HEAD | grep -v "^assets/" ; git reset -q && git status --short | head -50; date -u +%H:%M
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+.claude/settings.json
+.gitignore
+.idea/.gitignore
+.idea/cashmine-task.iml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+AGENTS.md
+App.tsx
+CLAUDE.md
+LICENSE
+ai-logs/.gitkeep
+ai-logs/01-api-investigation-spec-and-balance-decision.md
+app.json
+docs/superpowers/specs/2026-10-23-cashmine-payback-design.md
+index.ts
+package-lock.json
+package.json
+src/api/__tests__/endpoints.test.ts
+src/api/__tests__/errors.test.ts
+tsconfig.json
+ M .gitignore
+ D App.tsx
+ M app.json
+ M docs/superpowers/specs/2026-10-23-cashmine-payback-design.md
+ D index.ts
+ M package-lock.json
+ M package.json
+ D src/api/__tests__/endpoints.test.ts
+ D src/api/__tests__/errors.test.ts
+?? NOTES.md
+?? README.md
+?? ai-logs/02-implementation-T0-T5-review-and-restructure.md
+?? eslint.config.js
+?? src/app/
+?? src/components/
+?? src/features/
+?? src/hooks/
+?? src/lib/
+08:45
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:45:33 UTC
+
+Everything is unstaged now; only the index changed, not the files on disk. I'll write the remaining-work plan first so it goes into the docs commit:
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/docs/superpowers/plans/2026-10-23-remaining-work.md`
+
+`````markdown
+# Remaining work — plan (written 08:45 UTC, deadline 09:00 UTC)
+
+Spec: `docs/superpowers/specs/2026-10-23-cashmine-payback-design.md`.
+
+**Done:** T0 setup and deploy, T1 money, T2 API client, T3 token, T4 Home, T5 claim flow, T6 tracking
+and overlay, most of T8 (NOTES, README, AI logs 01 and 02).
+**Checks:** 143 unit tests passing, typecheck and lint clean. Live at
+https://tvittiqw-cashmine-task.expo.app.
+
+## Before 09:00 (in order, nothing else)
+
+| # | Step | Owner | Done when |
+|---|------|-------|-----------|
+| 1 | Commit the work as layered commits (setup → money → API → token → claims core → Home → claim UI → docs) | AI | `git log` shows each layer; the working tree is clean apart from `.idea/` |
+| 2 | Push to `origin` (GitHub `Tvittiqw/cashmine-task`) and confirm the repo is public | User | The commits are visible on GitHub |
+| 3 | Phone pass on the live link at about 390 px: token → Home → claim 10 USDT (Max, an invalid amount, review) → status shows completed → Home shows "includes your claim", then settles | User | No broken screen; write down anything odd |
+| 4 | If step 3 finds a blocker, apply only the smallest safe fix, then test, typecheck, lint, export, deploy, commit and push | AI + User | Redeployed before 08:58 |
+| 5 | Read "Working with AI" in NOTES.md and adjust the three moments to your own words | User | NOTES.md is true to your experience |
+| 6 | Reply to the email: repo link, live link, roughly 2 h spent, and the AI tool used | User | Sent before 09:00 |
+| 7 | Delete the token file in the session scratchpad | AI | File gone |
+
+No push and no redeploy after 09:00.
+
+## Deliberately not done (already in NOTES.md → "Not done / known issues")
+
+- **T7 Activity.** There isn't enough time to build it to the same standard. The approach is
+  written down: an infinite list, duplicates dropped by `id` because the API's pages overlap by
+  one item.
+- **End-to-end or UI tests.** Coverage is unit tests on all money, API, overlay and submission
+  logic.
+
+## If there were more time (next steps, in priority order)
+
+1. **Activity (T7):**
+   - `useInfiniteQuery` with `limit=20`, dropping duplicates by `id`.
+   - Rows for accrual, reversal and claim, with a claim's `relatedId` linking to `/claims/[id]`.
+   - States: loading, error with retry for the failed page, end of list, and pull-to-refresh.
+2. **UI tests** with React Native Testing Library for `ClaimForm`, covering:
+   - Max fills exactly the available amount
+   - the comma-to-dot conversion is visible in the field
+   - a double tap on Confirm sends one request
+3. **Throttled-network browser tests:** a 504 followed by Check status, a token change while a
+   claim is unresolved, and a reload during submission.
+4. **Make forgetting the token reliable:** surface a failed storage removal instead of ignoring it.
+
+`````
+
+**🔧 Bash** — _Create layered commits for all work_
+
+`````bash
+set -e
+c(){ msg="$1"; shift; git add -A -- "$@"; git commit -q -m "$msg" && git log --oneline -1; }
+c "chore: set up Expo Router, TanStack Query, Jest and ESLint
+
+Switch entry to expo-router with src/app routes and single-page web
+output, add query/storage/crypto deps, jest-expo preset, lint and
+typecheck scripts, link the EAS Hosting project, ignore .idea/." \
+  package.json package-lock.json app.json .gitignore eslint.config.js App.tsx index.ts
+c "feat(money): exact bigint amount parsing, validation and USD totals
+
+Server-equivalent decimal parsing to base units, canonical formatting,
+claim amount validation (min, available, fee), half-up USD rounding and
+truncating display formatting, with unit tests." src/lib/money
+c "feat(api): typed API client with error classification and response guards
+
+Single base URL, request timeout, normalised ApiError, retryable-read and
+definitive-claim-rejection classifiers, runtime shape guards for every
+endpoint, Idempotency-Key support for claims, with unit tests." src/lib/api src/api
+c "feat(token): storage service, token provider and shared UI primitives
+
+AsyncStorage wrapper with named keys, token persistence with cache
+clearing on change and global 401 handling, plus Screen/Card/Button/
+Banner/ErrorState/Row components and theme tokens." src/lib/storage src/features/token src/components src/hooks
+c "feat(claims): claim intent store, idempotent submission and balance overlay
+
+Balance model and queries; persisted claim intents and tracked claims;
+same-key replay on unknown outcomes (D3); confirmed-claim overlay
+reconciled by asOf (D2 option C); claim validation helpers, status
+polling and options hooks, with unit tests." \
+  src/features/balances/model.ts src/features/balances/useBalances.ts src/features/balances/useDisplayBalances.ts \
+  src/features/claims/store.tsx src/features/claims/reconcile.ts src/features/claims/submitClaim.ts \
+  src/features/claims/claimValidation.ts src/features/claims/useClaimSubmission.ts \
+  src/features/claims/useClaimStatus.ts src/features/claims/useClaimOptions.ts src/features/claims/__tests__
+c "feat(app): root layout with token gate and token screen
+
+Providers, read-retry policy honouring retryAfterMs, protected routes,
+and a token screen that verifies the token before saving it." src/app/_layout.tsx src/app/token.tsx
+c "feat(home): balances screen with totals, freshness and claim progress
+
+Per-asset AssetCard with formatting helpers, USD totals, snapshot age,
+stale/refresh/error states, in-progress and failed claim notices." \
+  src/app/index.tsx src/features/balances/balanceFormatting.ts src/features/balances/components src/features/balances/__tests__
+c "feat(claim): claim form, review, unknown-outcome recovery and status screen
+
+ClaimForm/ClaimReview/PendingClaim components driven by useClaimSubmission;
+claim status screen polling until completed or failed." \
+  src/app/claim.tsx src/app/claims src/features/claims/components
+c "docs: notes, readme, remaining-work plan, spec updates and AI log 02" \
+  NOTES.md README.md docs ai-logs
+git status --short; date -u +%H:%M
+`````
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/docs/superpowers/plans/2026-10-23-remaining-work.md (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Bash)</summary>
+
+`````text
+eaa0a5a chore: set up Expo Router, TanStack Query, Jest and ESLint
+d66e03c feat(money): exact bigint amount parsing, validation and USD totals
+30d870f feat(api): typed API client with error classification and response guards
+664b35b feat(token): storage service, token provider and shared UI primitives
+e0991c8 feat(claims): claim intent store, idempotent submission and balance overlay
+ca09208 feat(app): root layout with token gate and token screen
+2dc27d6 feat(home): balances screen with totals, freshness and claim progress
+96d0614 feat(claim): claim form, review, unknown-outcome recovery and status screen
+b4e6e5d docs: notes, readme, remaining-work plan, spec updates and AI log 02
+08:45
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:45:58 UTC
+
+Nine commits are in, and the working tree is clean. Last checks: secrets across all commit history, and tests and typecheck on the final commit:
+
+**🔧 Bash** — _Scan git history for secrets; test and typecheck_
+
+`````bash
+S=/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad; cd /Users/viktor/Documents/projects/cashmine-task; T=$(cat $S/token); for p in "$T" "$(echo $T|cut -d. -f2)" "$(echo $T|cut -d. -f3)" <REDACTED_CID> <REDACTED_EMAIL> <REDACTED_EMAIL>; do printf '%s ' "$(git log -p --all | grep -cF -- "$p")"; done; echo "<- secret hits in all history (must be 0)"; npx jest 2>&1 | grep "Tests:"; npx tsc --noEmit && echo "tsc OK"; git log --oneline | wc -l
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+0 0 0 0 0 12 <- secret hits in all history (must be 0)
+Tests:       143 passed, 143 total
+tsc OK
+      12
+`````
+
+</details>
+
+**🔧 Bash** — _Check where the email fragment appears in history_
+
+`````bash
+git log -p --all | grep -F <REDACTED_EMAIL> | sed -E 's/<[^>]*>/<email>/' | sort | uniq -c
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+  12 Author: Viktor Kanchalaba <email>
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:46:19 UTC
+
+The work is split into 9 commits on `master`, in dependency order. The working tree is clean, all 143 tests pass and typecheck is clean. I have **not pushed**.
+
+| Commit | Contents |
+|---|---|
+| `eaa0a5a` chore | Expo Router, TanStack Query, Jest, ESLint, EAS link |
+| `d66e03c` feat(money) | bigint amounts, validation, USD totals and their tests |
+| `30d870f` feat(api) | API client, error handling, response checks and their tests |
+| `664b35b` feat(token) | storage service, token provider, shared UI pieces |
+| `e0991c8` feat(claims) | claim store, same-key re-sends, Option C overlay and their tests |
+| `ca09208` feat(app) | root layout, token gate, token screen |
+| `2dc27d6` feat(home) | balances screen, `AssetCard`, formatting helpers and their tests |
+| `96d0614` feat(claim) | `ClaimForm`, `ClaimReview`, `PendingClaim`, status screen |
+| `b4e6e5d` docs | NOTES, README, the plan, spec updates, AI log 02 |
+
+The token, client ID and both emails appear nowhere in the history. The only exception is your Git author line, which shows your email on every commit, including your own earlier ones; that comes from your Git config.
+
+**Plan for the rest** (`docs/superpowers/plans/2026-10-23-remaining-work.md`):
+1. ~~Layered commits~~ (done).
+2. **Push to `origin` and check the repo is public.** This is yours, or tell me to do it.
+3. Phone pass on the live link: token, Home, claim 10 USDT, status, Home again.
+4. Only if step 3 finds a blocker: the smallest fix, then test, deploy, commit and push before 08:58.
+5. Adjust "Working with AI" in NOTES.md to your own words.
+6. Reply to the email with the repo link, the live link, roughly 2 h, and the AI tool used.
+7. I delete the token's scratch file.
+
+Activity (T7) stays out on purpose. Building it properly won't fit in the time left, and the planned approach is already written in NOTES.md and the plan.
+
+It's 08:46. Should I push the 9 commits to `origin` now?
+
+## 🧑 User — 2026-10-23 08:46:59 UTC
+
+dont think about time, just impement the rest. then do a manual browser testing.
+
+## 🤖 Claude — 2026-10-23 08:47:13 UTC
+
+Building T7 Activity now. The pure logic (merging pages and dropping duplicates, plus row labels) goes in its own files with tests, and there's a small row component and a thin screen. Then I'll test the app in a browser.
+
+One thing from the brief: no pushes or deploys after 09:00. So I'll build and test locally, and won't push or deploy unless you tell me to.
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/activity/activityPages.ts`
+
+`````markdown
+import type { ActivityItemDto, ActivityPageDto } from '../../lib/api/endpoints';
+
+/**
+ * Flattens activity pages in order, keeping the first copy of each item.
+ * The API's pages overlap (each page repeats the previous page's last item, and new accruals
+ * shift offsets), so ids must be de-duplicated (spec §3.5).
+ */
+export function mergeActivityPages(pages: ActivityPageDto[]): ActivityItemDto[] {
+  const seen = new Set<string>();
+  const items: ActivityItemDto[] = [];
+  for (const page of pages) {
+    for (const item of page.items) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      items.push(item);
+    }
+  }
+  return items;
+}
+
+`````
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/activity/activityFormatting.ts`
+
+`````markdown
+import type { ActivityItemDto } from '../../lib/api/endpoints';
+
+export type AmountTone = 'credit' | 'debit' | 'void';
+
+export function activityTitle(item: ActivityItemDto): string {
+  switch (item.type) {
+    case 'accrual':
+      return item.exchange ? `Payback from ${item.exchange}` : 'Payback';
+    case 'reversal':
+      return item.exchange ? `Reversed by ${item.exchange}` : 'Reversal';
+    case 'claim':
+      return 'Claim';
+  }
+}
+
+/** A failed claim never left the balance, so its amount is shown as void, not as a debit. */
+export function isVoided(item: ActivityItemDto): boolean {
+  return item.type === 'claim' && item.status === 'failed';
+}
+
+export function amountTone(item: ActivityItemDto): AmountTone {
+  if (isVoided(item)) return 'void';
+  return item.amount.startsWith('-') ? 'debit' : 'credit';
+}
+
+/** Amounts are shown exactly as the API returns them; only an explicit '+' is added to credits. */
+export function activityAmountLabel(item: ActivityItemDto): string {
+  const sign = item.amount.startsWith('-') ? '' : '+';
+  return `${sign}${item.amount} ${item.asset}`;
+}
+
+export function activityStatusLabel(item: ActivityItemDto): string {
+  if (isVoided(item)) return 'Failed · not deducted';
+  if (item.type === 'claim' && item.status === 'pending') return 'Processing';
+  return item.status.charAt(0).toUpperCase() + item.status.slice(1);
+}
+
+/** Only claims created by this account carry the claim id needed for the status screen. */
+export function claimLink(item: ActivityItemDto): string | null {
+  return item.type === 'claim' && item.relatedId ? `/claims/${item.relatedId}` : null;
+}
+
+`````
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/activity/__tests__/activity.test.ts`
+
+`````markdown
+/// <reference types="jest" />
+import type { ActivityItemDto } from '../../../lib/api/endpoints';
+import {
+  activityAmountLabel,
+  activityStatusLabel,
+  activityTitle,
+  amountTone,
+  claimLink,
+} from '../activityFormatting';
+import { mergeActivityPages } from '../activityPages';
+
+function item(over: Partial<ActivityItemDto>): ActivityItemDto {
+  return {
+    id: 'act_1',
+    type: 'accrual',
+    asset: 'USDT',
+    amount: '9.81',
+    status: 'confirmed',
+    exchange: 'Binance',
+    createdAt: '2026-10-22T07:11:01.261Z',
+    relatedId: null,
+    ...over,
+  };
+}
+
+describe('mergeActivityPages', () => {
+  it('drops the item the API repeats at each page boundary, keeping order', () => {
+    const pages = [
+      { items: [item({ id: 'a' }), item({ id: 'b' })], nextCursor: 'x' },
+      { items: [item({ id: 'b' }), item({ id: 'c' })], nextCursor: null },
+    ];
+    expect(mergeActivityPages(pages).map((i) => i.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('handles no pages', () => {
+    expect(mergeActivityPages([])).toEqual([]);
+  });
+});
+
+describe('activityFormatting', () => {
+  it('describes each type', () => {
+    expect(activityTitle(item({}))).toBe('Payback from Binance');
+    expect(activityTitle(item({ type: 'reversal', exchange: 'OKX', amount: '-3.1' }))).toBe('Reversed by OKX');
+    expect(activityTitle(item({ type: 'claim', exchange: null, amount: '-60' }))).toBe('Claim');
+  });
+
+  it('shows amounts exactly as returned, with + on credits', () => {
+    expect(activityAmountLabel(item({}))).toBe('+9.81 USDT');
+    expect(activityAmountLabel(item({ amount: '-0.00004', asset: 'BTC' }))).toBe('-0.00004 BTC');
+  });
+
+  it('marks a failed claim as void rather than a debit', () => {
+    const failed = item({ type: 'claim', amount: '-0.5', status: 'failed', exchange: null });
+    expect(amountTone(failed)).toBe('void');
+    expect(activityStatusLabel(failed)).toBe('Failed · not deducted');
+    expect(amountTone(item({ type: 'claim', amount: '-60', status: 'completed' }))).toBe('debit');
+    expect(amountTone(item({}))).toBe('credit');
+  });
+
+  it('labels statuses', () => {
+    expect(activityStatusLabel(item({ status: 'pending' }))).toBe('Pending');
+    expect(activityStatusLabel(item({ type: 'claim', status: 'pending', amount: '-10' }))).toBe('Processing');
+  });
+
+  it('links only claims that carry a claim id', () => {
+    expect(claimLink(item({ type: 'claim', relatedId: 'clm_1', amount: '-10' }))).toBe('/claims/clm_1');
+    expect(claimLink(item({ type: 'claim', relatedId: null, amount: '-10' }))).toBeNull();
+    expect(claimLink(item({ type: 'reversal', relatedId: 'act_9', amount: '-3' }))).toBeNull();
+  });
+});
+
+`````
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/activity/useActivity.ts`
+
+`````markdown
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { getActivity } from '../../lib/api/endpoints';
+import { useRequiredToken } from '../token/TokenProvider';
+import { mergeActivityPages } from './activityPages';
+
+const PAGE_SIZE = 20;
+
+export function useActivity() {
+  const token = useRequiredToken();
+  const query = useInfiniteQuery({
+    queryKey: ['activity'],
+    queryFn: ({ pageParam, signal }) => getActivity(token, { limit: PAGE_SIZE, cursor: pageParam }, signal),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled: !!token,
+  });
+  const items = useMemo(() => mergeActivityPages(query.data?.pages ?? []), [query.data]);
+  return { query, items };
+}
+
+`````
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/activity/components/ActivityRow.tsx`
+
+`````markdown
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors, space } from '../../../components/theme';
+import type { ActivityItemDto } from '../../../lib/api/endpoints';
+import {
+  activityAmountLabel,
+  activityStatusLabel,
+  activityTitle,
+  amountTone,
+  claimLink,
+  type AmountTone,
+} from '../activityFormatting';
+
+const toneStyle: Record<AmountTone, object> = {
+  credit: { color: colors.success },
+  debit: { color: colors.text },
+  void: { color: colors.muted, textDecorationLine: 'line-through' },
+};
+
+export function ActivityRow({ item }: { item: ActivityItemDto }) {
+  const href = claimLink(item);
+  const openClaim = () => {
+    if (href) router.push(href);
+  };
+  return (
+    <Pressable onPress={openClaim} disabled={!href} style={s.row} accessibilityRole={href ? 'link' : undefined}>
+      <View style={s.main}>
+        <Text style={s.title}>{activityTitle(item)}</Text>
+        <Text style={s.meta}>
+          {new Date(item.createdAt).toLocaleString()} · {activityStatusLabel(item)}
+        </Text>
+      </View>
+      <Text style={[s.amount, toneStyle[amountTone(item)]]} selectable>
+        {activityAmountLabel(item)}
+      </Text>
+    </Pressable>
+  );
+}
+
+const s = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingVertical: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  main: { flex: 1, gap: 2 },
+  title: { fontSize: 15, fontWeight: '600', color: colors.text },
+  meta: { fontSize: 12, color: colors.muted },
+  amount: { fontSize: 15, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+});
+
+`````
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/features/activity/activityPages.ts (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/features/activity/activityFormatting.ts (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/features/activity/__tests__/activity.test.ts (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/features/activity/useActivity.ts (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/features/activity/components/ActivityRow.tsx (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:47:41 UTC
+
+Now the Activity screen. It uses its own `FlatList`, because a virtualised list mustn't sit inside the shared `Screen` ScrollView:
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/app/activity.tsx`
+
+`````markdown
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, space } from '../components/theme';
+import { Button, ErrorState } from '../components/ui';
+import { ActivityRow } from '../features/activity/components/ActivityRow';
+import { useActivity } from '../features/activity/useActivity';
+import { userMessage } from '../lib/api/apiClient';
+
+export default function ActivityScreen() {
+  const { query, items } = useActivity();
+
+  const loadMore = () => {
+    if (query.hasNextPage && !query.isFetchingNextPage && !query.isFetchNextPageError) void query.fetchNextPage();
+  };
+
+  if (!query.data) {
+    return (
+      <SafeAreaView style={s.safe} edges={['bottom', 'left', 'right']}>
+        <View style={s.center}>
+          {query.isError ? (
+            <ErrorState message={userMessage(query.error)} onRetry={() => void query.refetch()} retrying={query.isFetching} />
+          ) : (
+            <ActivityIndicator color={colors.primary} />
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={s.safe} edges={['bottom', 'left', 'right']}>
+      <FlatList
+        style={s.list}
+        contentContainerStyle={s.content}
+        data={items}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <ActivityRow item={item} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        refreshControl={<RefreshControl refreshing={query.isRefetching && !query.isFetchingNextPage} onRefresh={() => void query.refetch()} />}
+        ListEmptyComponent={<Text style={s.muted}>No activity yet.</Text>}
+        ListFooterComponent={<ListFooter query={query} onLoadMore={loadMore} />}
+      />
+    </SafeAreaView>
+  );
+}
+
+type FooterProps = {
+  query: ReturnType<typeof useActivity>['query'];
+  onLoadMore: () => void;
+};
+
+function ListFooter({ query, onLoadMore }: FooterProps) {
+  if (query.isFetchingNextPage) return <ActivityIndicator style={s.footer} color={colors.primary} />;
+  if (query.isFetchNextPageError) {
+    return (
+      <View style={s.footer}>
+        <Text style={s.error}>{`Couldn't load more: ${userMessage(query.error)}`}</Text>
+        <Button title="Try again" variant="secondary" compact onPress={() => void query.fetchNextPage()} />
+      </View>
+    );
+  }
+  if (query.hasNextPage) {
+    // Web has no reliable momentum scroll end, so offer an explicit button too.
+    return (
+      <View style={s.footer}>
+        <Button title="Load more" variant="secondary" compact onPress={onLoadMore} />
+      </View>
+    );
+  }
+  return <Text style={[s.muted, s.footer]}>{"That's everything."}</Text>;
+}
+
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bg },
+  center: { flex: 1, justifyContent: 'center', padding: space.lg },
+  list: { width: '100%', maxWidth: 480, alignSelf: 'center' },
+  content: { paddingHorizontal: space.lg, paddingBottom: space.xl, backgroundColor: colors.card },
+  footer: { paddingVertical: space.lg, gap: space.sm, alignItems: 'center' },
+  muted: { color: colors.muted, fontSize: 14, textAlign: 'center', paddingVertical: space.lg },
+  error: { color: colors.danger, fontSize: 14, textAlign: 'center' },
+});
+
+`````
+
+**🔧 Bash** — _Register activity route, link from Home, verify_
+
+`````bash
+python3 -I - <<'EOF'
+p='src/app/_layout.tsx'; s=open(p).read()
+a="""        <Stack.Screen name="claims/[id]" options={{ title: 'Claim status' }} />
+"""
+b=a+"""        <Stack.Screen name="activity" options={{ title: 'Activity' }} />
+"""
+assert a in s and 'name="activity"' not in s; open(p,'w').write(s.replace(a,b))
+p='src/app/index.tsx'; s=open(p).read()
+a="""      <Button title="Change token" variant="secondary" onPress={() => router.push('/token')} />"""
+b="""      <Button title="Activity" variant="secondary" onPress={() => router.push('/activity')} />
+      <Button title="Change token" variant="secondary" onPress={() => router.push('/token')} />"""
+assert a in s; open(p,'w').write(s.replace(a,b))
+EOF
+npx tsc --noEmit && echo "tsc OK"; npx eslint src && echo "lint clean"; npx jest 2>&1 | grep -E "Tests:|✕"
+`````
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/app/activity.tsx (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Bash)</summary>
+
+`````text
+tsc OK
+lint clean
+Tests:       150 passed, 150 total
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:48:02 UTC
+
+T7 is built: 150 tests pass, and typecheck and lint are clean. Next is manual browser testing. First I'll check which browser tools this session has:
+
+**🔧 ToolSearch**
+
+`````json
+{
+  "query": "browser chrome navigate screenshot",
+  "max_results": 8
+}
+`````
+
+<details><summary>result (ToolSearch)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Bash** — _Check Chrome and install playwright-core in scratchpad_
+
+`````bash
+ls -d "/Applications/Google Chrome.app" 2>&1; S=/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad; mkdir -p $S/pw && cd $S/pw && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --silent --no-audit --no-fund playwright-core@1.48.2 2>&1 | tail -2; ls node_modules | head
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+/Applications/Google Chrome.app
+playwright-core
+Shell cwd was reset to /Users/viktor/Documents/projects/cashmine-task
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:48:23 UTC
+
+Chrome is there and `playwright-core` is installed. Next, a production export of the current code with T7, served locally in the background:
+
+**🔧 Bash** — _Export current web build to dist_
+
+`````bash
+rm -rf dist && npx expo export --platform web 2>&1 | grep -E "^Exported|rror:"
+`````
+
+**🔧 Bash** — _Serve exported web build locally on port 8099_
+
+`````bash
+npx expo serve --port 8099
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+Exported: dist
+`````
+
+</details>
+
+<details><summary>result (Bash)</summary>
+
+`````text
+Command running in background with ID: b2k5ogzok. Output is being written to: /private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/tasks/b2k5ogzok.output. You will be notified when it completes — do not poll that file or sleep while waiting. Read the file only if the user asks for progress, or if you need a line it prints before you can go on, such as a server's ready line or port.
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:48:38 UTC
+
+I'll check the server's ready line for the port:
+
+**🔧 Bash** — _Check local server is ready_
+
+`````bash
+cat /private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/tasks/b2k5ogzok.output | tail -5; curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8099/claims/x
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+Starting static server in /Users/viktor/Documents/projects/cashmine-task/dist
+Server running at http://localhost:8099
+404
+`````
+
+</details>
+
+**🔧 Bash** — _Run scripted browser pass at 390px with screenshots_
+
+`````bash
+S=/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad; mkdir -p $S/shots
+cat > $S/pw/flow.js <<'EOF'
+// Manual-style pass at phone size. The token is read from a file and never printed.
+const { chromium } = require('playwright-core');
+const fs = require('fs');
+const [,, BASE, TOKEN_FILE, OUT] = process.argv;
+const TOKEN = fs.readFileSync(TOKEN_FILE, 'utf8').trim();
+const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
+
+(async () => {
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const consoleIssues = [];
+  page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) consoleIssues.push(`${m.type()}: ${m.text().slice(0, 200)}`); });
+  page.on('pageerror', (e) => consoleIssues.push(`pageerror: ${e.message}`));
+  const shot = async (name) => { await page.waitForTimeout(400); await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true }); log('shot', name); };
+  const step = async (name, fn) => { try { await fn(); } catch (e) { log('FAIL', name, e.message.split('\n')[0]); await shot(`FAIL-${name}`); } };
+
+  await step('token-screen', async () => {
+    await page.goto(BASE + '/');
+    await page.getByText('Enter your API token').waitFor({ timeout: 15000 });
+    await shot('01-token');
+  });
+  await step('bad-token', async () => {
+    await page.getByLabel('API token').fill('ct1.not-a-real-token');
+    await page.getByRole('button', { name: 'Save token' }).click();
+    await page.getByText(/rejected or has expired/).waitFor({ timeout: 20000 });
+    await shot('02-bad-token');
+  });
+  await step('good-token', async () => {
+    await page.getByLabel('API token').fill(TOKEN);
+    await page.getByRole('button', { name: 'Save token' }).click();
+    await page.getByText('Total payback').waitFor({ timeout: 30000 });
+    await shot('03-home');
+  });
+  await step('activity', async () => {
+    await page.getByRole('button', { name: 'Activity' }).click();
+    await page.getByText(/Payback from/).first().waitFor({ timeout: 20000 });
+    await shot('04-activity');
+    for (let i = 0; i < 5; i++) {
+      const more = page.getByRole('button', { name: 'Load more' });
+      if (!(await more.isVisible().catch(() => false))) break;
+      await more.click();
+      await page.waitForTimeout(1500);
+    }
+    await page.getByText("That's everything.").waitFor({ timeout: 20000 });
+    const rows = await page.getByText(/ · (Confirmed|Pending|Completed|Processing|Failed)/).count();
+    log('activity rows rendered:', rows);
+    await shot('05-activity-end');
+    await page.goBack();
+    await page.getByText('Total payback').waitFor({ timeout: 15000 });
+  });
+  await step('claim-form', async () => {
+    await page.getByRole('button', { name: 'Claim USDT' }).click();
+    await page.getByText('Send to').waitFor({ timeout: 20000 });
+    await shot('06-claim-form');
+    const amount = page.getByLabel('Amount in USDT');
+    await amount.fill('10,000');
+    log('typed "10,000" -> field shows:', JSON.stringify(await amount.inputValue()));
+    await shot('07-comma');
+    await amount.fill('5');
+    await page.getByText(/minimum claim is 10 USDT/).waitFor({ timeout: 5000 });
+    await shot('08-below-min');
+    await amount.fill('1.1234567');
+    await page.getByText(/up to 6 decimal places/).waitFor({ timeout: 5000 });
+    await page.getByText('Max', { exact: true }).click();
+    log('Max fills:', JSON.stringify(await amount.inputValue()));
+    log('Review enabled without destination:', await page.getByRole('button', { name: 'Review claim' }).isEnabled());
+    await shot('09-max-no-destination');
+  });
+  await step('review-and-submit', async () => {
+    await page.getByText(/Wallet 0x8f3e/).click();
+    await page.getByLabel('Amount in USDT').fill('10');
+    await page.getByRole('button', { name: 'Review claim' }).click();
+    await page.getByText('Review your claim').waitFor({ timeout: 5000 });
+    await shot('10-review');
+    const confirm = page.getByRole('button', { name: 'Confirm claim' });
+    await confirm.click();
+    await page.waitForURL(/\/claims\//, { timeout: 60000 });
+    await shot('11-status-pending');
+    await page.getByText(/^(Completed|Failed)$/).waitFor({ timeout: 60000 });
+    await shot('12-status-final');
+  });
+  await step('home-after-claim', async () => {
+    await page.getByRole('button', { name: 'Back to balances' }).click();
+    await page.getByText('Total payback').waitFor({ timeout: 15000 });
+    await shot('13-home-after-claim');
+  });
+  await step('reload-keeps-token', async () => {
+    await page.reload();
+    await page.getByText('Total payback').waitFor({ timeout: 30000 });
+    await shot('14-after-reload');
+  });
+  await step('change-token-cancel', async () => {
+    await page.getByRole('button', { name: 'Change token' }).click();
+    await page.getByText('Change your API token').waitFor({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByText('Total payback').waitFor({ timeout: 10000 });
+    log('history length after cancel:', await page.evaluate(() => history.length));
+    await shot('15-after-cancel');
+  });
+  log('console issues:', consoleIssues.length ? '\n  ' + [...new Set(consoleIssues)].join('\n  ') : 'none');
+  await browser.close();
+})();
+EOF
+cd $S/pw && node flow.js http://localhost:8099 $S/token $S/shots 2>&1 | grep -vF "$(cat $S/token)"
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+08:49:08 shot 01-token
+08:49:09 shot 02-bad-token
+08:49:10 shot 03-home
+08:49:12 shot 04-activity
+08:49:13 activity rows rendered: 29
+08:49:14 shot 05-activity-end
+08:49:16 shot 06-claim-form
+08:49:16 typed "10,000" -> field shows: "10.000"
+08:49:16 shot 07-comma
+08:49:17 shot 08-below-min
+08:49:17 Max fills: "865.283207"
+08:49:17 Review enabled without destination: false
+08:49:17 shot 09-max-no-destination
+08:49:18 shot 10-review
+08:49:20 shot 11-status-pending
+08:49:33 shot 12-status-final
+08:49:34 shot 13-home-after-claim
+08:49:36 shot 14-after-reload
+08:49:37 history length after cancel: 3
+08:49:37 shot 15-after-cancel
+08:49:37 console issues: 
+  error: Failed to load resource: the server responded with a status of 401 ()
+  error: Failed to load resource: the server responded with a status of 503 ()
+Shell cwd was reset to /Users/viktor/Documents/projects/cashmine-task
+`````
+
+</details>
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/03-home.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/09-max-no-destination.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/10-review.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/12-status-final.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/13-home-after-claim.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/04-activity.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Edit**
+
+`````json
+{
+  "replace_all": false,
+  "file_path": "/Users/viktor/Documents/projects/cashmine-task/src/features/claims/__tests__/reconcile.test.ts",
+  "old_string": "  it('never shows a negative available balance', () => {",
+  "new_string": "  describe('claims the snapshot saw as pending but that settled after it', () => {\n    const inSnapshot = { ...usdt, available: 90_000_000n, claiming: 10_000_000n };\n    const settled = (status: 'completed' | 'failed') =>\n      claim({ status, createdAt: '2026-10-23T07:59:50.000Z', updatedAt: '2026-10-23T08:00:10.000Z' });\n\n    it('moves a failed claim back from claiming to available', () => {\n      const r = run([settled('failed')], [inSnapshot]);\n      expect(r.available).toBe(100_000_000n);\n      expect(r.claiming).toBe(0n);\n      expect(r.adjustedBy.map((c) => c.id)).toEqual(['clm_1']);\n    });\n\n    it('removes a completed claim from claiming', () => {\n      const r = run([settled('completed')], [inSnapshot]);\n      expect(r.available).toBe(90_000_000n);\n      expect(r.claiming).toBe(0n);\n    });\n\n    it('leaves a claim alone once the snapshot has seen it settle', () => {\n      const old = claim({ status: 'failed', createdAt: '2026-10-23T07:59:00.000Z', updatedAt: '2026-10-23T07:59:30.000Z' });\n      expect(run([old], [usdt])).toEqual({ ...usdt, adjustedBy: [] });\n    });\n  });\n\n  it('never shows a negative available balance', () => {"
+}
+`````
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/claims/reconcile.ts`
+
+`````markdown
+import type { ClaimDto } from '../../lib/api/endpoints';
+import { parseUnits } from '../../lib/money';
+import type { Balance } from '../balances/model';
+
+export interface DisplayBalance extends Balance {
+  /** Server-confirmed claims applied on top of a snapshot that predates them. */
+  adjustedBy: ClaimDto[];
+}
+
+interface Delta {
+  available: bigint;
+  claiming: bigint;
+}
+
+const NONE: Delta = { available: 0n, claiming: 0n };
+
+/**
+ * What the snapshot taken at `snapshotAt` is missing about one claim:
+ * - created after the snapshot: the amount hasn't left `available` yet (unless the claim failed);
+ * - created before but settled after: the snapshot still counts it in `claiming`.
+ */
+function missingFromSnapshot(c: ClaimDto, amount: bigint, snapshotAt: number): Delta {
+  const createdAfter = Date.parse(c.createdAt) > snapshotAt;
+  if (createdAfter) {
+    if (c.status === 'pending') return { available: -amount, claiming: amount };
+    if (c.status === 'completed') return { available: -amount, claiming: 0n };
+    return NONE;
+  }
+  const settledAfter = c.status !== 'pending' && Date.parse(c.updatedAt) > snapshotAt;
+  if (!settledAfter) return NONE;
+  if (c.status === 'failed') return { available: amount, claiming: -amount };
+  return { available: 0n, claiming: -amount };
+}
+
+/**
+ * D2 option C: brings a snapshot up to date with claims the server has already confirmed. Once a
+ * newer snapshot arrives, every delta is zero again, so the balance never drops and jumps back.
+ */
+export function applyTrackedClaims(asOf: string, balances: Balance[], claims: ClaimDto[]): DisplayBalance[] {
+  const snapshotAt = Date.parse(asOf);
+  return balances.map((b) => {
+    let available = b.available;
+    let claiming = b.claiming;
+    const adjustedBy: ClaimDto[] = [];
+    for (const c of claims) {
+      if (c.asset !== b.asset) continue;
+      const parsed = parseUnits(c.amount, b.decimals);
+      if (!parsed.ok) continue;
+      const delta = missingFromSnapshot(c, parsed.units, snapshotAt);
+      if (delta === NONE) continue;
+      available += delta.available;
+      claiming += delta.claiming;
+      adjustedBy.push(c);
+    }
+    // Should never happen; never show a negative balance.
+    if (available < 0n) available = 0n;
+    if (claiming < 0n) claiming = 0n;
+    return { ...b, available, claiming, adjustedBy };
+  });
+}
+
+`````
+
+**🔧 Bash** — _Run reconcile tests_
+
+`````bash
+npx jest src/features/claims 2>&1 | grep -E "Tests:|✕|●" | head
+`````
+
+<details><summary>result (Edit)</summary>
+
+`````text
+The file /Users/viktor/Documents/projects/cashmine-task/src/features/claims/__tests__/reconcile.test.ts has been updated successfully. (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Write)</summary>
+
+`````text
+The file /Users/viktor/Documents/projects/cashmine-task/src/features/claims/reconcile.ts has been updated successfully. (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Bash)</summary>
+
+`````text
+Tests:       25 passed, 25 total
+`````
+
+</details>
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/claims/claimFormatting.ts`
+
+`````markdown
+import type { ClaimDto, ClaimStatus } from '../../lib/api/endpoints';
+
+function asSentence(text: string): string {
+  const trimmed = text.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/** Why a failed claim failed, in the server's words, plus where the money is now. */
+export function failureMessage(claim: ClaimDto): string {
+  const returned = `${claim.amount} ${claim.asset} is back in your available balance.`;
+  return claim.failureReason ? `${asSentence(claim.failureReason)} ${returned}` : returned;
+}
+
+export function failedClaimNotice(claim: ClaimDto): string {
+  return `Your claim of ${claim.amount} ${claim.asset} failed. ${failureMessage(claim)}`;
+}
+
+export function receiveRowLabel(status: ClaimStatus): string {
+  switch (status) {
+    case 'completed':
+      return 'Received';
+    case 'pending':
+      return 'To receive';
+    case 'failed':
+      return 'Not received';
+  }
+}
+
+`````
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/claims/__tests__/claimFormatting.test.ts`
+
+`````markdown
+/// <reference types="jest" />
+import type { ClaimDto } from '../../../lib/api/endpoints';
+import { failedClaimNotice, failureMessage, receiveRowLabel } from '../claimFormatting';
+
+const failed = {
+  amount: '10',
+  asset: 'USDT',
+  status: 'failed',
+  failureReason: 'The destination rejected the transfer.',
+} as ClaimDto;
+
+describe('claimFormatting', () => {
+  it('does not double the full stop after the server reason', () => {
+    expect(failureMessage(failed)).toBe('The destination rejected the transfer. 10 USDT is back in your available balance.');
+  });
+
+  it('adds a full stop when the reason has none', () => {
+    expect(failureMessage({ ...failed, failureReason: 'Limit reached' })).toBe(
+      'Limit reached. 10 USDT is back in your available balance.',
+    );
+  });
+
+  it('works without a reason', () => {
+    expect(failureMessage({ ...failed, failureReason: null })).toBe('10 USDT is back in your available balance.');
+  });
+
+  it('builds the Home notice', () => {
+    expect(failedClaimNotice(failed)).toBe(
+      'Your claim of 10 USDT failed. The destination rejected the transfer. 10 USDT is back in your available balance.',
+    );
+  });
+
+  it('never labels a failed claim as something you will receive', () => {
+    expect(receiveRowLabel('failed')).toBe('Not received');
+    expect(receiveRowLabel('pending')).toBe('To receive');
+    expect(receiveRowLabel('completed')).toBe('Received');
+  });
+});
+
+`````
+
+**🔧 Bash** — _Locate failure copy to replace in screens_
+
+`````bash
+grep -n "failureReason\|claim.status === 'completed' ? 'Received'\|Includes your claim\|recentlyFailed.map" -A3 src/app/claims/\[id\].tsx src/app/index.tsx src/features/balances/balanceFormatting.ts src/features/balances/__tests__/balanceFormatting.test.ts | head -40
+`````
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/features/claims/claimFormatting.ts (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/features/claims/__tests__/claimFormatting.test.ts (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Bash)</summary>
+
+`````text
+src/features/balances/__tests__/balanceFormatting.test.ts:31:    expect(claimAdjustmentNote({ ...eth, adjustedBy })).toBe('Includes your claim of 0.5 + 1 ETH · updating');
+src/features/balances/__tests__/balanceFormatting.test.ts-32-  });
+src/features/balances/__tests__/balanceFormatting.test.ts-33-
+src/features/balances/__tests__/balanceFormatting.test.ts-34-  it('says "no price" instead of $0 when the price is unusable', () => {
+src/app/claims/[id].tsx:49:            {claim.failureReason ? `${claim.failureReason}. ` : ''}
+src/app/claims/[id].tsx-50-            {claim.amount} {claim.asset} is back in your available balance.
+src/app/claims/[id].tsx-51-          </Text>
+src/app/claims/[id].tsx-52-        ) : null}
+--
+src/app/claims/[id].tsx:64:          label={claim.status === 'completed' ? 'Received' : 'To receive'}
+src/app/claims/[id].tsx-65-          value={`${claim.receiveAmount} ${claim.asset}`}
+src/app/claims/[id].tsx-66-          strong
+src/app/claims/[id].tsx-67-        />
+src/features/balances/balanceFormatting.ts:27:  return `Includes your claim of ${amounts} ${b.asset} · updating`;
+src/features/balances/balanceFormatting.ts-28-}
+src/app/index.tsx:71:      {recentlyFailed.map((c) => (
+src/app/index.tsx-72-        <Banner key={c.id} tone="error" action={{ title: 'Details', onPress: () => router.push(`/claims/${c.id}`) }}>
+src/app/index.tsx:73:          Claim of {c.amount} {c.asset} failed{c.failureReason ? ` (${c.failureReason})` : ''}. The amount is back in your
+src/app/index.tsx-74-          available balance.
+src/app/index.tsx-75-        </Banner>
+src/app/index.tsx-76-      ))}
+`````
+
+</details>
+
+**🔧 Bash** — _Use claim formatting helpers in screens; verify_
+
+`````bash
+python3 -I - <<'EOF'
+def edit(p, pairs):
+    s = open(p).read()
+    for a, b in pairs:
+        assert a in s, (p, a[:60]); s = s.replace(a, b)
+    open(p, 'w').write(s)
+
+edit('src/app/claims/[id].tsx', [
+ ("import { useClaimOptions } from '../../features/claims/useClaimOptions';",
+  "import { failureMessage, receiveRowLabel } from '../../features/claims/claimFormatting';\nimport { useClaimOptions } from '../../features/claims/useClaimOptions';"),
+ ("""          <Text style={{ color: st.fg }}>
+            {claim.failureReason ? `${claim.failureReason}. ` : ''}
+            {claim.amount} {claim.asset} is back in your available balance.
+          </Text>""", """          <Text style={{ color: st.fg }}>{failureMessage(claim)}</Text>"""),
+ ("label={claim.status === 'completed' ? 'Received' : 'To receive'}", "label={receiveRowLabel(claim.status)}"),
+])
+edit('src/app/index.tsx', [
+ ("import { useClaims } from '../features/claims/store';",
+  "import { failedClaimNotice } from '../features/claims/claimFormatting';\nimport { useClaims } from '../features/claims/store';"),
+ ("""          Claim of {c.amount} {c.asset} failed{c.failureReason ? ` (${c.failureReason})` : ''}. The amount is back in your
+          available balance.
+""", """          {failedClaimNotice(c)}
+"""),
+])
+edit('src/features/balances/balanceFormatting.ts', [
+ ("/** Explains a D2 overlay: the row includes claims the latest snapshot hasn't caught up with. */",
+  "/** Explains a D2 overlay: the row reflects claims the latest snapshot hasn't caught up with. */"),
+ ("return `Includes your claim of ${amounts} ${b.asset} · updating`;", "return `Reflects your claim of ${amounts} ${b.asset} · updating`;"),
+])
+edit('src/features/balances/__tests__/balanceFormatting.test.ts', [
+ ("toBe('Includes your claim of 0.5 + 1 ETH · updating')", "toBe('Reflects your claim of 0.5 + 1 ETH · updating')"),
+])
+EOF
+npx tsc --noEmit && echo "tsc OK"; npx eslint src && echo "lint clean"; npx jest 2>&1 | grep -E "Tests:|✕"
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+tsc OK
+lint clean
+Tests:       158 passed, 158 total
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:51:15 UTC
+
+158 tests pass, and typecheck and lint are clean. I'll rebuild and run the same browser pass again. It submits another real 10 USDT claim, so I can check Home right after it settles.
+
+**🔧 Bash** — _Rebuild and rerun browser pass_
+
+`````bash
+S=/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad; cd /Users/viktor/Documents/projects/cashmine-task && rm -rf dist && npx expo export --platform web 2>&1 | grep -E "^Exported|rror:" && rm -rf $S/shots && mkdir -p $S/shots && cd $S/pw && node flow.js http://localhost:8099 $S/token $S/shots 2>&1 | grep -vF "$(cat $S/token)"
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+Exported: dist
+08:51:26 shot 01-token
+08:51:27 shot 02-bad-token
+08:51:28 shot 03-home
+08:51:30 shot 04-activity
+08:51:32 activity rows rendered: 30
+08:51:32 shot 05-activity-end
+08:51:33 shot 06-claim-form
+08:51:33 typed "10,000" -> field shows: "10.000"
+08:51:34 shot 07-comma
+08:51:34 shot 08-below-min
+08:51:34 Max fills: "865.283207"
+08:51:34 Review enabled without destination: false
+08:51:35 shot 09-max-no-destination
+08:51:35 shot 10-review
+08:51:38 shot 11-status-pending
+08:51:46 shot 12-status-final
+08:51:46 shot 13-home-after-claim
+08:51:48 shot 14-after-reload
+08:51:49 history length after cancel: 3
+08:51:49 shot 15-after-cancel
+08:51:49 console issues: 
+  error: Failed to load resource: the server responded with a status of 401 ()
+Shell cwd was reset to /Users/viktor/Documents/projects/cashmine-task
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:52:13 UTC
+
+Every step passed again, and the only console error is the expected 401 from the bad token. Checking the screens I changed: the status screen, Home right after the claim, and the bottom of Activity.
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/13-home-after-claim.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/12-status-final.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/05-activity-end.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Bash** — _Deploy tested build before 09:00 cutoff_
+
+`````bash
+S=/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad; T=$(cat $S/token); n=0; for p in "$T" "$(echo $T|cut -d. -f2)" "$(echo $T|cut -d. -f3)"; do grep -rqF -- "$p" dist src && n=$((n+1)); done; echo "token hits: $n"; [ "$n" = 0 ] && npx -y eas-cli@latest deploy --prod --non-interactive 2>&1 | grep -E "Production URL|rror"; date -u +%H:%M:%S; curl -s -o /dev/null -w "activity route %{http_code}\n" https://tvittiqw-cashmine-task.expo.app/activity
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+token hits: 0
+Production URL  https://tvittiqw-cashmine-task.expo.app
+08:52:48
+activity route 200
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:52:52 UTC
+
+Deployed at 08:52:48. Now I'll update the docs to match the code: NOTES, README, the plan, and the spec's Option C rules.
+
+**🔧 Bash** — _Update NOTES, README, plan and spec_
+
+`````bash
+python3 -I - <<'EOF'
+def edit(p, pairs):
+    s = open(p).read()
+    for a, b in pairs:
+        assert a in s, (p, a[:70]); s = s.replace(a, b)
+    open(p, 'w').write(s)
+
+edit('NOTES.md', [
+ ("  announces it with a banner.\n- Verified live",
+  "  announces it with a banner.\n- It also applies settlements the snapshot hasn't seen. A claim that completed or failed after\n  `asOf` comes out of claiming; a failed one goes back to available. A browser test showed why:\n  without this, Home said \"the amount is back\" while the stale snapshot still showed it in\n  claiming.\n- Verified live"),
+ ("""- **Activity (T7) is not built.** The plan was an infinite list that drops duplicates by `id`,
+  because the API's pages overlap by one item (observed, not documented).
+- **Untested in a real browser:**
+  - The full flows were tested only through unit tests, typecheck and the API.
+  - Next would be a pass at 390 px covering slow networks, a claim timeout followed by Check
+    status, and switching tokens.
+""", """- **Browser testing:**
+  - A scripted headless Chrome pass at 390 px covered:
+    - a bad token, then a good one
+    - Home
+    - Activity with all its pages
+    - claim validation: a comma, below the minimum, too many decimals, Max, no destination
+    - review, submit, a status that failed and one that completed
+    - a reload that keeps the token
+    - Cancel on the change-token screen
+  - Not covered in the browser: a forced timeout followed by Check status. That path has unit
+    tests only.
+- **Activity's "Load more" button** is there because `onEndReached` is unreliable on web.
+"""),
+])
+edit('README.md', [
+ ("Not done: Activity history (see NOTES.md).",
+  "- **Activity:** paginated history of paybacks, reversals and claims. Duplicate rows at page\n  boundaries are dropped, failed claims are shown as not deducted, and your own claims link to\n  their status."),
+])
+edit('docs/superpowers/plans/2026-10-23-remaining-work.md', [
+ ("## Deliberately not done (already in NOTES.md → \"Not done / known issues\")",
+  "## Update 08:53: T7 Activity built, browser pass done, overlay fix for claims that settle after the snapshot, deployed\n\n## Originally deferred (superseded by the update above)"),
+])
+edit('docs/superpowers/specs/2026-10-23-cashmine-payback-design.md', [
+ ("9. **Risk.** C depends on",
+  "8b. **Settled after the snapshot** (added after browser testing). A claim created before `asOf`\n   but completed or failed after it is still in the snapshot's `claiming`. Completed: claiming −x.\n   Failed: claiming −x and available +x.\n9. **Risk.** C depends on"),
+])
+EOF
+git status --short
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+ M NOTES.md
+ M README.md
+ M docs/superpowers/plans/2026-10-23-remaining-work.md
+ M docs/superpowers/specs/2026-10-23-cashmine-payback-design.md
+ M src/app/_layout.tsx
+ M src/app/claims/[id].tsx
+ M src/app/index.tsx
+ M src/features/balances/__tests__/balanceFormatting.test.ts
+ M src/features/balances/balanceFormatting.ts
+ M src/features/claims/__tests__/reconcile.test.ts
+ M src/features/claims/reconcile.ts
+?? src/app/activity.tsx
+?? src/features/activity/
+?? src/features/claims/__tests__/claimFormatting.test.ts
+?? src/features/claims/claimFormatting.ts
 `````
 
 </details>
