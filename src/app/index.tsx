@@ -7,6 +7,7 @@ import { AssetCard } from '../features/balances/components/AssetCard';
 import { usdTotals } from '../features/balances/model';
 import { useDisplayBalances } from '../features/balances/useDisplayBalances';
 import { failedClaimNotice } from '../features/claims/claimFormatting';
+import { CLAIM_STATUS_LABEL } from '../features/claims/claimLabels';
 import { useClaims } from '../features/claims/store';
 import { useClaimStatus } from '../features/claims/useClaimStatus';
 import { useNow } from '../hooks/useNow';
@@ -127,7 +128,7 @@ function PendingClaimRow({ claim }: { claim: ClaimDto }) {
   return (
     <Pressable onPress={() => router.push(`/claims/${c.id}`)} style={s.pendingRow}>
       <Text style={s.sub}>
-        {c.amount} {c.asset} · {c.status === 'pending' ? 'processing…' : c.status}
+        {c.amount} {c.asset} · {CLAIM_STATUS_LABEL[c.status]}
       </Text>
       <Text style={s.link}>View</Text>
     </Pressable>

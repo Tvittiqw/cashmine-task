@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 import type { ClaimOptionsDto } from '../../../lib/api/endpoints';
-import { checkClaim, claimAmountErrorMessage } from '../claimValidation';
+import { checkClaim, CLAIM_AMOUNT_ERROR_MESSAGE } from '../claimValidation';
 
 const options: ClaimOptionsDto = { asset: 'USDT', minAmount: '10', fee: '1.5', destinations: [] };
 const balance = { decimals: 6, available: 870_533_207n }; // 870.533207
@@ -30,13 +30,13 @@ describe('checkClaim', () => {
   });
 });
 
-describe('claimAmountErrorMessage', () => {
+describe('CLAIM_AMOUNT_ERROR_MESSAGE', () => {
   const ctx = { asset: 'ETH', decimals: 18, minAmount: '0.01', fee: '0.0012', available: '12.3' };
   it.each([
     ['below_min', 'The minimum claim is 0.01 ETH.'],
     ['above_available', 'You have 12.3 ETH available.'],
     ['too_many_decimals', 'ETH allows up to 18 decimal places.'],
   ] as const)('%s', (error, text) => {
-    expect(claimAmountErrorMessage(error, ctx)).toBe(text);
+    expect(CLAIM_AMOUNT_ERROR_MESSAGE[error](ctx)).toBe(text);
   });
 });

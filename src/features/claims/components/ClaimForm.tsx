@@ -3,7 +3,7 @@ import { colors, space } from '../../../components/theme';
 import { Banner, Button, Card, ErrorState, Row } from '../../../components/ui';
 import type { ClaimOptionsDto } from '../../../lib/api/endpoints';
 import { formatUnits, maxInput } from '../../../lib/money';
-import { claimAmountErrorMessage, type ClaimCheck } from '../claimValidation';
+import { CLAIM_AMOUNT_ERROR_MESSAGE, type ClaimCheck } from '../claimValidation';
 import type { DisplayBalance } from '../reconcile';
 
 type Props = {
@@ -87,7 +87,7 @@ export function ClaimForm(p: Props) {
               </Text>
             ) : p.input && check.result && !check.result.ok ? (
               <Text style={s.error}>
-                {claimAmountErrorMessage(check.result.error, {
+                {CLAIM_AMOUNT_ERROR_MESSAGE[check.result.error]({
                   asset: selected.asset,
                   decimals: selected.decimals,
                   minAmount: options.minAmount,

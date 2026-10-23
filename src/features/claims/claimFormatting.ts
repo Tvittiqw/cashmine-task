@@ -1,4 +1,4 @@
-import type { ClaimDto, ClaimStatus } from '../../lib/api/endpoints';
+import type { ClaimDto } from '../../lib/api/endpoints';
 
 function asSentence(text: string): string {
   const trimmed = text.trim();
@@ -13,15 +13,4 @@ export function failureMessage(claim: ClaimDto): string {
 
 export function failedClaimNotice(claim: ClaimDto): string {
   return `Your claim of ${claim.amount} ${claim.asset} failed. ${failureMessage(claim)}`;
-}
-
-export function receiveRowLabel(status: ClaimStatus): string {
-  switch (status) {
-    case 'completed':
-      return 'Received';
-    case 'pending':
-      return 'To receive';
-    case 'failed':
-      return 'Not received';
-  }
 }

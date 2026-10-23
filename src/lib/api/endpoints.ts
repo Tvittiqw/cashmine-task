@@ -21,6 +21,10 @@ const SIGNED_AMOUNT_RE = /^-?(0|[1-9]\d*)(\.\d+)?$/;
 const ACTIVITY_TYPES: readonly string[] = ['accrual', 'reversal', 'claim'];
 const CLAIM_STATUSES: readonly string[] = ['pending', 'completed', 'failed'];
 
+export function isClaimStatus(x: unknown): x is ClaimStatus {
+  return typeof x === 'string' && CLAIM_STATUSES.includes(x);
+}
+
 const isString = (x: unknown): x is string => typeof x === 'string';
 const isId = (x: unknown): boolean => isString(x) && x.length > 0;
 const isNullableString = (x: unknown): boolean => x === null || isString(x);
@@ -70,7 +74,7 @@ export function isClaimDto(x: unknown): x is ClaimDto {
   return (
     isRecord(x) && isId(x.id) && isId(x.asset) &&
     isAmount(x.amount) && isAmount(x.fee) && isAmount(x.receiveAmount) && isId(x.destinationId) &&
-    isString(x.status) && CLAIM_STATUSES.includes(x.status) && isNullableString(x.failureReason) &&
+    isClaimStatus(x.status) && isNullableString(x.failureReason) &&
     isTimestamp(x.createdAt) && isTimestamp(x.updatedAt)
   );
 }

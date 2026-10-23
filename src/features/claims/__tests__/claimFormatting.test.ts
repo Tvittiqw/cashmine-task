@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 import type { ClaimDto } from '../../../lib/api/endpoints';
-import { failedClaimNotice, failureMessage, receiveRowLabel } from '../claimFormatting';
+import { failedClaimNotice, failureMessage } from '../claimFormatting';
 
 const failed = {
   amount: '10',
@@ -28,11 +28,5 @@ describe('claimFormatting', () => {
     expect(failedClaimNotice(failed)).toBe(
       'Your claim of 10 USDT failed. The destination rejected the transfer. 10 USDT is back in your available balance.',
     );
-  });
-
-  it('never labels a failed claim as something you will receive', () => {
-    expect(receiveRowLabel('failed')).toBe('Not received');
-    expect(receiveRowLabel('pending')).toBe('To receive');
-    expect(receiveRowLabel('completed')).toBe('Received');
   });
 });

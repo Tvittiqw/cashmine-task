@@ -48,24 +48,31 @@ export function isUnauthorized(e: unknown): boolean {
   return httpStatus(e) === 401;
 }
 
+const UNKNOWN_ERROR_MESSAGE = 'Something went wrong. Please try again.';
+const SERVER_ERROR_MESSAGE = 'CashMine is having trouble right now. Please try again.';
+
+const ERROR_KIND_MESSAGE: Record<Exclude<ApiErrorKind, 'http'>, string> = {
+  network: "Can't reach CashMine. Check your connection.",
+  timeout: 'CashMine is taking too long to respond. Please try again.',
+  invalid_response: 'CashMine sent an unexpected response. Please try again.',
+};
+
+const HTTP_STATUS_MESSAGE: Record<number, string> = {
+  400: 'The request was not valid.',
+  401: 'Your token was rejected or has expired.',
+  404: "We couldn't find that.",
+  409: 'This request conflicts with an earlier one.',
+  429: 'Too many requests. Please wait a moment and try again.',
+};
+
 export function userMessage(e: unknown): string {
-  if (!(e instanceof ApiError)) return 'Something went wrong. Please try again.';
-  switch (e.kind) {
-    case 'network':
-      return "Can't reach CashMine. Check your connection.";
-    case 'timeout':
-      return 'CashMine is taking too long to respond. Please try again.';
-    case 'invalid_response':
-      return 'CashMine sent an unexpected response. Please try again.';
-  }
+  if (!(e instanceof ApiError)) return UNKNOWN_ERROR_MESSAGE;
+  if (e.kind !== 'http') return ERROR_KIND_MESSAGE[e.kind];
+  // The server's validation messages are written for users ("The minimum claim is 0.01 ETH").
+  if (e.code === 'VALIDATION') return e.message;
   const status = e.status ?? 0;
-  if (status === 400) return e.code === 'VALIDATION' ? e.message : 'The request was not valid.';
-  if (status === 401) return 'Your token was rejected or has expired.';
-  if (status === 404) return "We couldn't find that.";
-  if (status === 409) return 'This request conflicts with an earlier one.';
-  if (status === 429) return 'Too many requests. Please wait a moment and try again.';
-  if (status >= 500) return 'CashMine is having trouble right now. Please try again.';
-  return `Something went wrong (HTTP ${status}).`;
+  if (status >= 500) return SERVER_ERROR_MESSAGE;
+  return HTTP_STATUS_MESSAGE[status] ?? `Something went wrong (HTTP ${status}).`;
 }
 
 export function isRecord(x: unknown): x is Record<string, unknown> {

@@ -1,4 +1,4 @@
-import type { ClaimDto } from '../../lib/api/endpoints';
+import type { ClaimDto, ClaimStatus } from '../../lib/api/endpoints';
 import { parseUnits } from '../../lib/money';
 import type { Balance } from '../balances/model';
 
@@ -7,34 +7,37 @@ export interface DisplayBalance extends Balance {
   adjustedBy: ClaimDto[];
 }
 
-interface Delta {
+/** Change per unit of the claim amount: -1n, 0n or 1n for each balance field. */
+interface Effect {
   available: bigint;
   claiming: bigint;
 }
 
-const NONE: Delta = { available: 0n, claiming: 0n };
+const NO_EFFECT: Effect = { available: 0n, claiming: 0n };
 
-/**
- * What the snapshot taken at `snapshotAt` is missing about one claim:
- * - created after the snapshot: the amount hasn't left `available` yet (unless the claim failed);
- * - created before but settled after: the snapshot still counts it in `claiming`.
- */
-function missingFromSnapshot(c: ClaimDto, amount: bigint, snapshotAt: number): Delta {
-  const createdAfter = Date.parse(c.createdAt) > snapshotAt;
-  if (createdAfter) {
-    if (c.status === 'pending') return { available: -amount, claiming: amount };
-    if (c.status === 'completed') return { available: -amount, claiming: 0n };
-    return NONE;
-  }
-  const settledAfter = c.status !== 'pending' && Date.parse(c.updatedAt) > snapshotAt;
-  if (!settledAfter) return NONE;
-  if (c.status === 'failed') return { available: amount, claiming: -amount };
-  return { available: 0n, claiming: -amount };
+/** The snapshot predates the claim, so the amount hasn't left `available` yet. */
+const CREATED_AFTER_SNAPSHOT: Record<ClaimStatus, Effect> = {
+  pending: { available: -1n, claiming: 1n },
+  completed: { available: -1n, claiming: 0n },
+  failed: NO_EFFECT,
+};
+
+/** The snapshot still counts the claim in `claiming`, but it has settled since. */
+const SETTLED_AFTER_SNAPSHOT: Record<ClaimStatus, Effect> = {
+  pending: NO_EFFECT,
+  completed: { available: 0n, claiming: -1n },
+  failed: { available: 1n, claiming: -1n },
+};
+
+function effectOnSnapshot(claim: ClaimDto, snapshotAt: number): Effect {
+  if (Date.parse(claim.createdAt) > snapshotAt) return CREATED_AFTER_SNAPSHOT[claim.status];
+  if (Date.parse(claim.updatedAt) > snapshotAt) return SETTLED_AFTER_SNAPSHOT[claim.status];
+  return NO_EFFECT;
 }
 
 /**
  * D2 option C: brings a snapshot up to date with claims the server has already confirmed. Once a
- * newer snapshot arrives, every delta is zero again, so the balance never drops and jumps back.
+ * newer snapshot arrives, every effect is zero again, so the balance never drops and jumps back.
  */
 export function applyTrackedClaims(asOf: string, balances: Balance[], claims: ClaimDto[]): DisplayBalance[] {
   const snapshotAt = Date.parse(asOf);
@@ -44,12 +47,11 @@ export function applyTrackedClaims(asOf: string, balances: Balance[], claims: Cl
     const adjustedBy: ClaimDto[] = [];
     for (const c of claims) {
       if (c.asset !== b.asset) continue;
+      const effect = effectOnSnapshot(c, snapshotAt);
       const parsed = parseUnits(c.amount, b.decimals);
-      if (!parsed.ok) continue;
-      const delta = missingFromSnapshot(c, parsed.units, snapshotAt);
-      if (delta === NONE) continue;
-      available += delta.available;
-      claiming += delta.claiming;
+      if (effect === NO_EFFECT || !parsed.ok) continue;
+      available += effect.available * parsed.units;
+      claiming += effect.claiming * parsed.units;
       adjustedBy.push(c);
     }
     // Should never happen; never show a negative balance.

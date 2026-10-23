@@ -30,22 +30,19 @@ export function checkClaim(
   };
 }
 
-export function claimAmountErrorMessage(
-  error: ClaimAmountError,
-  ctx: { asset: string; decimals: number; minAmount: string; fee: string; available: string },
-): string {
-  switch (error) {
-    case 'empty':
-      return 'Enter an amount.';
-    case 'format':
-      return 'Enter a number like 0.5 (one decimal point, no spaces or thousands separators).';
-    case 'too_many_decimals':
-      return `${ctx.asset} allows up to ${ctx.decimals} decimal places.`;
-    case 'below_min':
-      return `The minimum claim is ${ctx.minAmount} ${ctx.asset}.`;
-    case 'above_available':
-      return `You have ${ctx.available} ${ctx.asset} available.`;
-    case 'fee_exceeds_amount':
-      return `The amount must be more than the ${ctx.fee} ${ctx.asset} fee.`;
-  }
+export interface ClaimMessageContext {
+  asset: string;
+  decimals: number;
+  minAmount: string;
+  fee: string;
+  available: string;
 }
+
+export const CLAIM_AMOUNT_ERROR_MESSAGE: Record<ClaimAmountError, (ctx: ClaimMessageContext) => string> = {
+  empty: () => 'Enter an amount.',
+  format: () => 'Enter a number like 0.5 (one decimal point, no spaces or thousands separators).',
+  too_many_decimals: (ctx) => `${ctx.asset} allows up to ${ctx.decimals} decimal places.`,
+  below_min: (ctx) => `The minimum claim is ${ctx.minAmount} ${ctx.asset}.`,
+  above_available: (ctx) => `You have ${ctx.available} ${ctx.asset} available.`,
+  fee_exceeds_amount: (ctx) => `The amount must be more than the ${ctx.fee} ${ctx.asset} fee.`,
+};

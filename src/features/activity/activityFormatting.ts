@@ -1,16 +1,12 @@
-import type { ActivityItemDto } from '../../lib/api/endpoints';
+import { isClaimStatus, type ActivityItemDto } from '../../lib/api/endpoints';
+import { CLAIM_STATUS_LABEL } from '../claims/claimLabels';
+import { ACTIVITY_STATUS_LABEL, ACTIVITY_TITLE, EXCHANGE_TITLE, VOIDED_CLAIM_LABEL } from './activityLabels';
 
 export type AmountTone = 'credit' | 'debit' | 'void';
 
 export function activityTitle(item: ActivityItemDto): string {
-  switch (item.type) {
-    case 'accrual':
-      return item.exchange ? `Payback from ${item.exchange}` : 'Payback';
-    case 'reversal':
-      return item.exchange ? `Reversed by ${item.exchange}` : 'Reversal';
-    case 'claim':
-      return 'Claim';
-  }
+  const withExchange = EXCHANGE_TITLE[item.type];
+  return item.exchange && withExchange ? withExchange(item.exchange) : ACTIVITY_TITLE[item.type];
 }
 
 /** A failed claim never left the balance, so its amount is shown as void, not as a debit. */
@@ -30,9 +26,9 @@ export function activityAmountLabel(item: ActivityItemDto): string {
 }
 
 export function activityStatusLabel(item: ActivityItemDto): string {
-  if (isVoided(item)) return 'Failed · not deducted';
-  if (item.type === 'claim' && item.status === 'pending') return 'Processing';
-  return item.status.charAt(0).toUpperCase() + item.status.slice(1);
+  if (isVoided(item)) return VOIDED_CLAIM_LABEL;
+  if (item.type === 'claim' && isClaimStatus(item.status)) return CLAIM_STATUS_LABEL[item.status];
+  return ACTIVITY_STATUS_LABEL[item.status] ?? item.status;
 }
 
 /** Only claims created by this account carry the claim id needed for the status screen. */
