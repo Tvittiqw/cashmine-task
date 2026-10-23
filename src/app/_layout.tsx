@@ -47,6 +47,7 @@ function AppStack() {
         <Stack.Screen name="index" options={{ title: 'Payback' }} />
         <Stack.Screen name="claim" options={{ title: 'Claim payback' }} />
         <Stack.Screen name="claims/[id]" options={{ title: 'Claim status' }} />
+        <Stack.Screen name="activity" options={{ title: 'Activity' }} />
       </Stack.Protected>
     </Stack>
   );
