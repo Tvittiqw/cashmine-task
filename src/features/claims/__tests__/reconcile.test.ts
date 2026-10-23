@@ -77,6 +77,30 @@ describe('applyTrackedClaims (D2 option C)', () => {
     expect(r.claiming).toBe(30_500_000n);
   });
 
+  describe('claims the snapshot saw as pending but that settled after it', () => {
+    const inSnapshot = { ...usdt, available: 90_000_000n, claiming: 10_000_000n };
+    const settled = (status: 'completed' | 'failed') =>
+      claim({ status, createdAt: '2026-10-23T07:59:50.000Z', updatedAt: '2026-10-23T08:00:10.000Z' });
+
+    it('moves a failed claim back from claiming to available', () => {
+      const r = run([settled('failed')], [inSnapshot]);
+      expect(r.available).toBe(100_000_000n);
+      expect(r.claiming).toBe(0n);
+      expect(r.adjustedBy.map((c) => c.id)).toEqual(['clm_1']);
+    });
+
+    it('removes a completed claim from claiming', () => {
+      const r = run([settled('completed')], [inSnapshot]);
+      expect(r.available).toBe(90_000_000n);
+      expect(r.claiming).toBe(0n);
+    });
+
+    it('leaves a claim alone once the snapshot has seen it settle', () => {
+      const old = claim({ status: 'failed', createdAt: '2026-10-23T07:59:00.000Z', updatedAt: '2026-10-23T07:59:30.000Z' });
+      expect(run([old], [usdt])).toEqual({ ...usdt, adjustedBy: [] });
+    });
+  });
+
   it('never shows a negative available balance', () => {
     expect(run([claim({ amount: '150' })]).available).toBe(0n);
   });

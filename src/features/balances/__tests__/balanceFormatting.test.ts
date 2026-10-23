@@ -28,7 +28,7 @@ describe('balanceFormatting', () => {
 
   it('explains which claims the overlay applied', () => {
     const adjustedBy = [{ amount: '0.5' }, { amount: '1' }] as ClaimDto[];
-    expect(claimAdjustmentNote({ ...eth, adjustedBy })).toBe('Includes your claim of 0.5 + 1 ETH · updating');
+    expect(claimAdjustmentNote({ ...eth, adjustedBy })).toBe('Reflects your claim of 0.5 + 1 ETH · updating');
   });
 
   it('says "no price" instead of $0 when the price is unusable', () => {

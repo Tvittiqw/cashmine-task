@@ -6,6 +6,7 @@ import { Banner, Button, Card, ErrorState, Screen } from '../components/ui';
 import { AssetCard } from '../features/balances/components/AssetCard';
 import { usdTotals } from '../features/balances/model';
 import { useDisplayBalances } from '../features/balances/useDisplayBalances';
+import { failedClaimNotice } from '../features/claims/claimFormatting';
 import { useClaims } from '../features/claims/store';
 import { useClaimStatus } from '../features/claims/useClaimStatus';
 import { useNow } from '../hooks/useNow';
@@ -70,8 +71,7 @@ export default function HomeScreen() {
       ) : null}
       {recentlyFailed.map((c) => (
         <Banner key={c.id} tone="error" action={{ title: 'Details', onPress: () => router.push(`/claims/${c.id}`) }}>
-          Claim of {c.amount} {c.asset} failed{c.failureReason ? ` (${c.failureReason})` : ''}. The amount is back in your
-          available balance.
+          {failedClaimNotice(c)}
         </Banner>
       ))}
       {stale ? (
@@ -115,6 +115,7 @@ export default function HomeScreen() {
         view.balances.map((b) => <AssetCard key={b.asset} balance={b} claimBlocked={!!intent} />)
       )}
 
+      <Button title="Activity" variant="secondary" onPress={() => router.push('/activity')} />
       <Button title="Change token" variant="secondary" onPress={() => router.push('/token')} />
     </Screen>
   );

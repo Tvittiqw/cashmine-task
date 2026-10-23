@@ -7,10 +7,34 @@ export interface DisplayBalance extends Balance {
   adjustedBy: ClaimDto[];
 }
 
+interface Delta {
+  available: bigint;
+  claiming: bigint;
+}
+
+const NONE: Delta = { available: 0n, claiming: 0n };
+
 /**
- * D2 option C: a claim the server has confirmed but the snapshot (taken at `asOf`) hasn't seen yet
- * is applied to it. Once a snapshot newer than the claim arrives, the overlay stops applying, so
- * the balance never drops and then jumps back. Only a failed claim gives money back.
+ * What the snapshot taken at `snapshotAt` is missing about one claim:
+ * - created after the snapshot: the amount hasn't left `available` yet (unless the claim failed);
+ * - created before but settled after: the snapshot still counts it in `claiming`.
+ */
+function missingFromSnapshot(c: ClaimDto, amount: bigint, snapshotAt: number): Delta {
+  const createdAfter = Date.parse(c.createdAt) > snapshotAt;
+  if (createdAfter) {
+    if (c.status === 'pending') return { available: -amount, claiming: amount };
+    if (c.status === 'completed') return { available: -amount, claiming: 0n };
+    return NONE;
+  }
+  const settledAfter = c.status !== 'pending' && Date.parse(c.updatedAt) > snapshotAt;
+  if (!settledAfter) return NONE;
+  if (c.status === 'failed') return { available: amount, claiming: -amount };
+  return { available: 0n, claiming: -amount };
+}
+
+/**
+ * D2 option C: brings a snapshot up to date with claims the server has already confirmed. Once a
+ * newer snapshot arrives, every delta is zero again, so the balance never drops and jumps back.
  */
 export function applyTrackedClaims(asOf: string, balances: Balance[], claims: ClaimDto[]): DisplayBalance[] {
   const snapshotAt = Date.parse(asOf);
@@ -19,15 +43,18 @@ export function applyTrackedClaims(asOf: string, balances: Balance[], claims: Cl
     let claiming = b.claiming;
     const adjustedBy: ClaimDto[] = [];
     for (const c of claims) {
-      if (c.asset !== b.asset || c.status === 'failed') continue;
-      if (Date.parse(c.createdAt) <= snapshotAt) continue; // already in the snapshot
+      if (c.asset !== b.asset) continue;
       const parsed = parseUnits(c.amount, b.decimals);
       if (!parsed.ok) continue;
-      available -= parsed.units;
-      if (c.status === 'pending') claiming += parsed.units;
+      const delta = missingFromSnapshot(c, parsed.units, snapshotAt);
+      if (delta === NONE) continue;
+      available += delta.available;
+      claiming += delta.claiming;
       adjustedBy.push(c);
     }
-    if (available < 0n) available = 0n; // should never happen; never show a negative balance
+    // Should never happen; never show a negative balance.
+    if (available < 0n) available = 0n;
+    if (claiming < 0n) claiming = 0n;
     return { ...b, available, claiming, adjustedBy };
   });
 }

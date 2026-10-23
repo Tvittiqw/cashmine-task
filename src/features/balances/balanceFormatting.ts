@@ -20,9 +20,9 @@ export function claimingLabel(b: DisplayBalance): string | null {
   return `Claiming: ${formatAmountDisplay(b.claiming, b.decimals)}`;
 }
 
-/** Explains a D2 overlay: the row includes claims the latest snapshot hasn't caught up with. */
+/** Explains a D2 overlay: the row reflects claims the latest snapshot hasn't caught up with. */
 export function claimAdjustmentNote(b: DisplayBalance): string | null {
   if (b.adjustedBy.length === 0) return null;
   const amounts = b.adjustedBy.map((c) => c.amount).join(' + ');
-  return `Includes your claim of ${amounts} ${b.asset} · updating`;
+  return `Reflects your claim of ${amounts} ${b.asset} · updating`;
 }

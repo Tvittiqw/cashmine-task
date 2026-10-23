@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { colors, space } from '../../components/theme';
 import { Banner, Button, Card, ErrorState, Row, Screen } from '../../components/ui';
+import { failureMessage, receiveRowLabel } from '../../features/claims/claimFormatting';
 import { useClaimOptions } from '../../features/claims/useClaimOptions';
 import { useClaimStatus } from '../../features/claims/useClaimStatus';
 import { useNow } from '../../hooks/useNow';
@@ -45,10 +46,7 @@ export default function ClaimStatusScreen() {
         <Text style={[s.status, { color: st.fg }]}>{st.text}</Text>
         {claim.status === 'pending' ? <ActivityIndicator color={st.fg} /> : null}
         {claim.status === 'failed' ? (
-          <Text style={{ color: st.fg }}>
-            {claim.failureReason ? `${claim.failureReason}. ` : ''}
-            {claim.amount} {claim.asset} is back in your available balance.
-          </Text>
+          <Text style={{ color: st.fg }}>{failureMessage(claim)}</Text>
         ) : null}
       </Card>
       {slow ? <Banner tone="warn">This is taking longer than usual. We keep checking.</Banner> : null}
@@ -61,7 +59,7 @@ export default function ClaimStatusScreen() {
         <Row label="Amount" value={`${claim.amount} ${claim.asset}`} />
         <Row label="Fee" value={`− ${claim.fee} ${claim.asset}`} />
         <Row
-          label={claim.status === 'completed' ? 'Received' : 'To receive'}
+          label={receiveRowLabel(claim.status)}
           value={`${claim.receiveAmount} ${claim.asset}`}
           strong
         />
