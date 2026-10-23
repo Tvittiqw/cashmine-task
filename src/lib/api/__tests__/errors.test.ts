@@ -4,7 +4,7 @@ import {
   isRetryableRead,
   isUnauthorized,
   userMessage,
-} from '../errors';
+} from '../apiClient';
 
 const http = (status: number, code?: string, message = 'server message') =>
   new ApiError('http', message, { status, code });
@@ -49,7 +49,7 @@ describe('userMessage', () => {
   it('maps errors to friendly copy', () => {
     expect(userMessage(http(400, 'VALIDATION', 'The minimum claim is 0.01 ETH'))).toBe('The minimum claim is 0.01 ETH');
     expect(userMessage(http(401))).toBe('Your token was rejected or has expired.');
-    expect(userMessage(http(429))).toBe('Too many requests — retrying shortly');
+    expect(userMessage(http(429))).toBe('Too many requests. Please wait a moment and try again.');
     expect(userMessage(new ApiError('network', 'x'))).toBe("Can't reach CashMine. Check your connection.");
     expect(userMessage(new Error('boom'))).toBe('Something went wrong. Please try again.');
   });

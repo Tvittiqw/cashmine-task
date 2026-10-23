@@ -1,6 +1,5 @@
-import { REQUEST_TIMEOUT_MS } from '../../config/api';
+import { ApiError, REQUEST_TIMEOUT_MS } from '../apiClient';
 import { createClaim, getActivity, getBalances, getClaim, getClaimOptions } from '../endpoints';
-import { ApiError } from '../errors';
 
 const TOKEN = 'secret-token-123';
 
