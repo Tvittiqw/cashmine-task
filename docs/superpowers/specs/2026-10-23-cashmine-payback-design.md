@@ -47,7 +47,7 @@ Priority order (from the brief): **Balances → Claim → Unit tests → Activit
 - **Navigation:** Expo Router, routes in `src/app/` (AGENTS.md). Current scaffold is the blank
   `App.tsx` template — T0 migrates it.
 - **Token:** entered at runtime, kept in browser storage, changeable. Never in code/repo/build/logs.
-- **API base URL** in exactly one place: `src/config/api.ts`.
+- **API base URL** in exactly one place: `src/lib/api/apiClient.ts`.
 - Do not start the dev server from an agent; the user runs `npx expo start --web`.
 - Lint + typecheck + tests before declaring any subtask done.
 - Commit at least every 30 min, never squash. Agents commit only when the user asks.
@@ -267,12 +267,10 @@ src/
     claim.tsx                  # claim form + review step (?asset=ETH optional)
     claims/[id].tsx            # claim status tracking
     activity.tsx               # paginated history (optional)
-  config/api.ts                # API_BASE_URL (single source), timeouts
-  api/
-    types.ts                   # transport DTOs (amounts as strings)
-    errors.ts                  # ApiError + classifiers
-    client.ts                  # fetch wrapper: auth, timeout, JSON, error normalisation, shape checks
-    endpoints.ts               # getBalances, getActivity, getClaimOptions, createClaim, getClaim
+  lib/api/
+    apiClient.ts               # API_BASE_URL (single source), timeout, ApiError + classifiers, request()
+    endpoints.ts               # transport DTOs + shape guards; getBalances, getActivity, getClaimOptions,
+                               # createClaim, getClaim
   lib/money/                   # PURE, no React, no I/O — fully unit tested
     decimal.ts                 # parse/format units
     claim.ts                   # claim amount validation, fee/receive, Max
@@ -293,11 +291,11 @@ src/
 ## 6. Shared contracts (freeze these first so lanes can work in parallel)
 
 ```ts
-// src/config/api.ts
+// src/lib/api/apiClient.ts — config + errors + request()
 export const API_BASE_URL = 'https://task-api.cashmine.io';
 export const REQUEST_TIMEOUT_MS = 15_000;
 
-// src/api/types.ts — transport shapes, amounts are decimal strings
+// src/lib/api/endpoints.ts — transport shapes, amounts are decimal strings
 export interface BalanceItemDto { asset: string; decimals: number; available: string; pending: string; claiming: string; usdPrice: string }
 export interface BalancesDto { asOf: string; items: BalanceItemDto[] }
 export type ActivityType = 'accrual' | 'reversal' | 'claim';
@@ -309,7 +307,7 @@ export type ClaimStatus = 'pending' | 'completed' | 'failed';
 export interface ClaimDto { id: string; asset: string; amount: string; fee: string; receiveAmount: string; destinationId: string; status: ClaimStatus; failureReason: string | null; createdAt: string; updatedAt: string }
 export interface CreateClaimBody { asset: string; amount: string; destinationId: string }
 
-// src/api/errors.ts
+// src/lib/api/apiClient.ts (continued)
 export type ApiErrorKind = 'http' | 'network' | 'timeout' | 'invalid_response';
 export class ApiError extends Error {
   kind: ApiErrorKind; status?: number; code?: string; field?: string; retryAfterMs?: number;
@@ -318,7 +316,7 @@ export function isRetryableRead(e: unknown): boolean;          // network/timeou
 export function isDefinitiveClaimRejection(e: unknown): boolean; // 400/401/409 → claim NOT created
 export function isUnauthorized(e: unknown): boolean;
 
-// src/api/endpoints.ts — token passed explicitly; never logged
+// src/lib/api/endpoints.ts — token passed explicitly; never logged
 getBalances(token: string, signal?: AbortSignal): Promise<BalancesDto>;
 getActivity(token: string, p: { limit?: number; cursor?: string | null }): Promise<ActivityPageDto>;
 getClaimOptions(token: string, asset: string): Promise<ClaimOptionsDto>;
@@ -351,7 +349,7 @@ export interface DisplayBalance extends Balance { adjustedBy: ClaimDto[] }  // n
 export function applyTrackedClaims(asOf: string, balances: Balance[], claims: ClaimDto[]): DisplayBalance[];
 ```
 
-Client rules (`client.ts`): set `Authorization` per call; `AbortController` timeout → `kind:'timeout'`;
+Client rules (`apiClient.ts`): set `Authorization` per call; `AbortController` timeout → `kind:'timeout'`;
 non-2xx → parse error envelope (fall back to status-only); 429 → `retryAfterMs` from body, else
 `Retry-After` header × 1000; validate response shape (required keys, amounts match `DECIMAL_RE`,
 signed `-?` allowed only for activity amounts) → `kind:'invalid_response'`. Never include headers or
@@ -407,7 +405,7 @@ Legend: **Lane** = can run in parallel with other lanes once its dependencies ar
 - **Done when:** `npm test` green, `tsc` clean. **No React imports in this folder.**
 
 ### T2 — API layer (Lane C, ~20 min) — after T0
-- **Owns:** `src/config/api.ts`, `src/api/**`.
+- **Owns:** `src/lib/api/**` (`apiClient.ts`, `endpoints.ts`, `__tests__/`).
 - Implement §6 contracts and the client rules. `createClaim` returns `replayed` from the
   `Idempotent-Replayed` header (web CORS exposes it).
 - Shape checks: hand-written guards (no zod needed). A malformed 2xx on `createClaim` must throw
@@ -423,8 +421,9 @@ Legend: **Lane** = can run in parallel with other lanes once its dependencies ar
   persisted under key `cashmine.token`.
 - Gate in `_layout`: render nothing (or a splash) while loading, redirect to `/token` when missing.
 - Token screen: masked text input with a show toggle, trimmed. On Save, verify with
-  `GET /v1/balances`: 401 → "Token rejected or expired"; network/5xx → save anyway with a notice
-  (Home will retry); success → Home. Has a "Forget token" action.
+  `GET /v1/balances`: 401 → "Token rejected or expired"; network/5xx → error with retry (the token
+  is saved only once verified; changed after code review); success → seed the balances cache with
+  that response and go back. Rejects non-printable-ASCII tokens up front. Has a "Forget token" action.
 - **Change token** entry in the Home header. Changing the token clears the query cache and the
   claim store, and warns if an intent is unresolved (D9).
 - Global 401 handling: any query or mutation 401 → forget the token's session state and route to
