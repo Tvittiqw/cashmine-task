@@ -8878,3 +8878,813 @@ git status --short
 `````
 
 </details>
+
+## 🤖 Claude — 2026-10-23 08:53:04 UTC
+
+The README has a stray blank line in the middle of its bullet list. I'll fix that, refresh AI log 02, and commit in three logical pieces:
+
+**🔧 Bash** — _Fix README, refresh log, commit in three parts_
+
+`````bash
+python3 -I -c "
+p='README.md'; s=open(p).read(); a='claim re-sends.\n\n- **Activity:**'; assert a in s; open(p,'w').write(s.replace(a,'claim re-sends.\n- **Activity:**'))"
+S=/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad; F=~/.claude/projects/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417.jsonl
+N=$(wc -l < $F); python3 -I $S/export_log.py $F $S/token ai-logs/02-implementation-T0-T5-review-and-restructure.md $((N-1)) "AI log 02 — implementation T0–T7, parallel agents, code review, restructuring, browser testing" 165 >/dev/null
+T=$(cat $S/token); hits=0; for p in "$T" "$(echo $T|cut -d. -f2)" "$(echo $T|cut -d. -f3)" <REDACTED_CID> <REDACTED_EMAIL> <REDACTED_EMAIL>; do c=$(grep -rlF --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist -- "$p" . | wc -l); hits=$((hits+c)); done; echo "secret hits: $hits"
+[ "$hits" = 0 ] || exit 1
+c(){ msg="$1"; shift; git add -A -- "$@"; git commit -q -m "$msg" && git log --oneline -1; }
+c "feat(activity): paginated history with de-duplicated pages
+
+useInfiniteQuery over /v1/activity, merging pages by id because the API
+repeats the last item of each page; rows for paybacks, reversals and
+claims (failed claims shown as not deducted, own claims link to status);
+loading, error, load-more and end states. Linked from Home." \
+  src/features/activity src/app/activity.tsx src/app/_layout.tsx
+c "fix(claims): reconcile claims that settle after the snapshot; clearer failure copy
+
+Browser testing showed Home saying a failed claim's amount was back while
+the stale snapshot still counted it as claiming. The overlay now also
+applies completions/failures newer than asOf. Failure text no longer
+doubles punctuation, and a failed claim is labelled 'Not received'." \
+  src/features/claims src/app/claims src/app/index.tsx src/features/balances
+c "docs: browser test results, activity, overlay rule 8b, AI log 02 refresh" NOTES.md README.md docs ai-logs
+git status --short; npx jest 2>&1 | grep "Tests:"; date -u +%H:%M:%S
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+secret hits: 0
+6337982 feat(activity): paginated history with de-duplicated pages
+069d4a9 fix(claims): reconcile claims that settle after the snapshot; clearer failure copy
+ef759f2 docs: browser test results, activity, overlay rule 8b, AI log 02 refresh
+Tests:       158 passed, 158 total
+08:53:15
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:53:17 UTC
+
+Committed, and the working tree is clean. I'll stop the local test server:
+
+**🔧 Bash** — _Stop local static server and show commit log_
+
+`````bash
+lsof -ti tcp:8099 | xargs kill 2>/dev/null; sleep 1; lsof -ti tcp:8099 || echo "server stopped"; cd /Users/viktor/Documents/projects/cashmine-task && git log --oneline | head -13 && git status --short | wc -l
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+server stopped
+ef759f2 docs: browser test results, activity, overlay rule 8b, AI log 02 refresh
+069d4a9 fix(claims): reconcile claims that settle after the snapshot; clearer failure copy
+6337982 feat(activity): paginated history with de-duplicated pages
+b4e6e5d docs: notes, readme, remaining-work plan, spec updates and AI log 02
+96d0614 feat(claim): claim form, review, unknown-outcome recovery and status screen
+2dc27d6 feat(home): balances screen with totals, freshness and claim progress
+ca09208 feat(app): root layout with token gate and token screen
+e0991c8 feat(claims): claim intent store, idempotent submission and balance overlay
+664b35b feat(token): storage service, token provider and shared UI primitives
+30d870f feat(api): typed API client with error classification and response guards
+d66e03c feat(money): exact bigint amount parsing, validation and USD totals
+eaa0a5a chore: set up Expo Router, TanStack Query, Jest and ESLint
+f07f52f specs and logs
+       0
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:53:31 UTC
+
+Activity (T7) is built and I tested the whole app in a browser. That testing found two bugs, which I fixed. Everything is committed and deployed. **Nothing is pushed**, and the brief bans pushing after 09:00 (it's 08:53).
+
+**Activity (T7):** the history of paybacks, reversals and claims, loaded page by page, with duplicate rows at page boundaries dropped. A failed claim is struck through and labelled "Failed · not deducted", and your own claims open their status screen. There are loading, error-with-retry, Load more and "That's everything" states. The page and label logic are pure functions with tests.
+
+**Browser testing:** I scripted headless Chrome at a 390 px phone viewport against a local production build. Two full passes, each with a real 10 USDT claim; the first claim failed and the second completed. Every step passed:
+- A bad token shows "rejected"; a good token opens Home.
+- Activity loads every page with no duplicate rows.
+- Typing `10,000` shows `10.000` in the field.
+- An amount below the minimum and one with 7 decimals each show the right error.
+- Max fills exactly `865.283207`.
+- Review stays disabled until a destination is picked.
+- Review, submit and the status screen work through to the end.
+- Reloading keeps the token, and Cancel on the change-token screen goes back without stacking screens.
+
+The only console errors were the expected 401 from the bad token and one random 503 from the server, which the app retried.
+
+**Bugs it found, now fixed:**
+1. **Home contradicted itself after a failed claim.** The banner said "the amount is back in your available balance", but the card still showed it under Claiming. The server snapshot was taken after the claim was created but before it failed. The Option C adjustment now also covers claims that complete or fail after the snapshot, with 3 new tests. In the second pass, Home matched the claim's real outcome straight away.
+2. **The failure text read badly.** It had a doubled period ("balance.. 10 USDT") and said the same thing twice, and a failed claim still showed a "To receive 8.5 USDT" row. That text now comes from `claimFormatting.ts`, which has tests, and the row says "Not received" for a failed claim.
+
+**Current state:**
+- 158 tests pass, and typecheck and lint are clean.
+- Deployed to https://tvittiqw-cashmine-task.expo.app at 08:52:48, and `/activity` loads.
+- 12 commits in total; the new ones are `feat(activity)`, `fix(claims)` and `docs`.
+- NOTES.md, README, the spec and AI log 02 are updated, and none of them contains the token.
+
+**Not tested in the browser:** forcing a timeout and then tapping Check status. That path has unit tests only, and NOTES.md says so.
+
+Should I push the 12 commits to `origin` now, before 09:00? After that I'll delete the token's scratch file.
+
+## 🧑 User — 2026-10-23 08:54:40 UTC
+
+check the code for inlines like these 
+
+<pasted_content id="ffe9">
+export function receiveRowLabel(status: ClaimStatus): string {
+  switch (status) {
+    case 'completed':
+      return 'Received';
+    case 'pending':
+      return 'To receive';
+    case 'failed':
+      return 'Not received';
+  }
+</pasted_content id="ffe9">
+
+ move to costants and resue
+
+## 🤖 Claude — 2026-10-23 08:54:52 UTC
+
+I'll look for every place that maps a value to text with a `switch` or a string ternary, so each can become a typed lookup constant.
+
+**🔧 Bash** — _Find switch and ternary value-to-label mappings_
+
+`````bash
+grep -rn "switch (" src --include=*.ts --include=*.tsx | grep -v __tests__; echo ---; grep -rnE "\? '[^']*' : '[^']*'|\? \"[^\"]*\" : '|=== '(pending|completed|failed|accrual|reversal|claim)' \?" src --include=*.ts --include=*.tsx | grep -v __tests__; echo ---; grep -rn "status === 4\|status === 5\|status >= 500" src --include=*.ts | grep -v __tests__
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+(eval):1: no matches found: --include=*.ts
+---
+(eval):1: no matches found: --include=*.ts
+---
+(eval):1: no matches found: --include=*.ts
+`````
+
+</details>
+
+**🔧 Bash** — _Find switch and ternary mappings (zsh-safe)_
+
+`````bash
+grep -rn "switch (" src | grep -v __tests__; echo ---; grep -rnE "\? '[^']*' : '[^']*'|=== '(pending|completed|failed|accrual|reversal|claim)' \?" src | grep -v __tests__; echo ---; grep -rnE "status === [0-9]|status >= 500" src | grep -v __tests__
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+src/features/activity/activityFormatting.ts:6:  switch (item.type) {
+src/features/claims/claimFormatting.ts:19:  switch (status) {
+src/features/claims/claimValidation.ts:37:  switch (error) {
+src/lib/api/apiClient.ts:53:  switch (e.kind) {
+---
+src/app/index.tsx:93:            {query.isFetching ? ' · refreshing…' : ''}
+src/app/index.tsx:130:        {c.amount} {c.asset} · {c.status === 'pending' ? 'processing…' : c.status}
+src/app/token.tsx:65:        <Text style={s.title}>{token ? 'Change your API token' : 'Enter your API token'}</Text>
+src/app/token.tsx:88:            <Text style={s.toggle}>{reveal ? 'Hide' : 'Show'}</Text>
+src/app/claims/[id].tsx:47:        {claim.status === 'pending' ? <ActivityIndicator color={st.fg} /> : null}
+src/app/claims/[id].tsx:48:        {claim.status === 'failed' ? (
+src/features/token/TokenProvider.tsx:31:        setStatus(stored ? 'ready' : 'missing');
+src/features/activity/activityFormatting.ts:23:  return item.amount.startsWith('-') ? 'debit' : 'credit';
+src/features/activity/activityFormatting.ts:28:  const sign = item.amount.startsWith('-') ? '' : '+';
+src/features/claims/components/ClaimForm.tsx:42:          {selected.adjustedBy.length ? ' (includes your recent claim)' : ''}
+src/lib/money/display.ts:20:  const sign = negative && (abs / base > 0n || fracPart !== '') ? '-' : '';
+src/lib/money/usd.ts:32:  const sign = negative && cents > 0n ? '-' : '';
+---
+src/features/claims/useClaimSubmission.ts:41:        if (outcome.error.status === 401) reportUnauthorized();
+src/lib/api/apiClient.ts:62:  if (status === 400) return e.code === 'VALIDATION' ? e.message : 'The request was not valid.';
+src/lib/api/apiClient.ts:63:  if (status === 401) return 'Your token was rejected or has expired.';
+src/lib/api/apiClient.ts:64:  if (status === 404) return "We couldn't find that.";
+src/lib/api/apiClient.ts:65:  if (status === 409) return 'This request conflicts with an earlier one.';
+src/lib/api/apiClient.ts:66:  if (status === 429) return 'Too many requests. Please wait a moment and try again.';
+src/lib/api/apiClient.ts:67:  if (status >= 500) return 'CashMine is having trouble right now. Please try again.';
+src/lib/api/apiClient.ts:150:  if (res.status === 429 && retryAfterMs === undefined) {
+`````
+
+</details>
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/claims/claimLabels.ts`
+
+`````markdown
+import type { ClaimStatus } from '../../lib/api/endpoints';
+
+export const CLAIM_STATUS_LABEL: Record<ClaimStatus, string> = {
+  pending: 'Processing',
+  completed: 'Completed',
+  failed: 'Failed',
+};
+
+export const CLAIM_PENDING_HINT = 'usually under 20 seconds';
+
+export const RECEIVE_ROW_LABEL: Record<ClaimStatus, string> = {
+  pending: 'To receive',
+  completed: 'Received',
+  failed: 'Not received',
+};
+
+`````
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/claims/claimFormatting.ts`
+
+`````markdown
+import type { ClaimDto } from '../../lib/api/endpoints';
+
+function asSentence(text: string): string {
+  const trimmed = text.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/** Why a failed claim failed, in the server's words, plus where the money is now. */
+export function failureMessage(claim: ClaimDto): string {
+  const returned = `${claim.amount} ${claim.asset} is back in your available balance.`;
+  return claim.failureReason ? `${asSentence(claim.failureReason)} ${returned}` : returned;
+}
+
+export function failedClaimNotice(claim: ClaimDto): string {
+  return `Your claim of ${claim.amount} ${claim.asset} failed. ${failureMessage(claim)}`;
+}
+
+`````
+
+**🔧 Bash** — _Show current usages to replace_
+
+`````bash
+grep -n "statusCopy\|receiveRowLabel\|st\.\|const st" src/app/claims/\[id\].tsx; grep -n "PendingClaimRow" -A 12 src/app/index.tsx | grep -n "status\|Text"; sed -n '35,70p' src/features/claims/claimValidation.ts; sed -n '48,70p' src/lib/api/apiClient.ts
+`````
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/features/claims/claimLabels.ts (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Write)</summary>
+
+`````text
+The file /Users/viktor/Documents/projects/cashmine-task/src/features/claims/claimFormatting.ts has been updated successfully. (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Bash)</summary>
+
+`````text
+5:import { failureMessage, receiveRowLabel } from '../../features/claims/claimFormatting';
+13:const statusCopy = {
+39:  const st = statusCopy[claim.status];
+45:      <Card style={{ gap: space.md, backgroundColor: st.bg, borderColor: st.bg }}>
+46:        <Text style={[s.status, { color: st.fg }]}>{st.text}</Text>
+47:        {claim.status === 'pending' ? <ActivityIndicator color={st.fg} /> : null}
+49:          <Text style={{ color: st.fg }}>{failureMessage(claim)}</Text>
+62:          label={receiveRowLabel(claim.status)}
+8:112-          <Text style={s.muted}>No balances yet. Payback appears here once you trade on a connected exchange.</Text>
+20:129-      <Text style={s.sub}>
+21:130-        {c.amount} {c.asset} · {c.status === 'pending' ? 'processing…' : c.status}
+22:131-      </Text>
+23:132-      <Text style={s.link}>View</Text>
+  ctx: { asset: string; decimals: number; minAmount: string; fee: string; available: string },
+): string {
+  switch (error) {
+    case 'empty':
+      return 'Enter an amount.';
+    case 'format':
+      return 'Enter a number like 0.5 (one decimal point, no spaces or thousands separators).';
+    case 'too_many_decimals':
+      return `${ctx.asset} allows up to ${ctx.decimals} decimal places.`;
+    case 'below_min':
+      return `The minimum claim is ${ctx.minAmount} ${ctx.asset}.`;
+    case 'above_available':
+      return `You have ${ctx.available} ${ctx.asset} available.`;
+    case 'fee_exceeds_amount':
+      return `The amount must be more than the ${ctx.fee} ${ctx.asset} fee.`;
+  }
+}
+  return httpStatus(e) === 401;
+}
+
+export function userMessage(e: unknown): string {
+  if (!(e instanceof ApiError)) return 'Something went wrong. Please try again.';
+  switch (e.kind) {
+    case 'network':
+      return "Can't reach CashMine. Check your connection.";
+    case 'timeout':
+      return 'CashMine is taking too long to respond. Please try again.';
+    case 'invalid_response':
+      return 'CashMine sent an unexpected response. Please try again.';
+  }
+  const status = e.status ?? 0;
+  if (status === 400) return e.code === 'VALIDATION' ? e.message : 'The request was not valid.';
+  if (status === 401) return 'Your token was rejected or has expired.';
+  if (status === 404) return "We couldn't find that.";
+  if (status === 409) return 'This request conflicts with an earlier one.';
+  if (status === 429) return 'Too many requests. Please wait a moment and try again.';
+  if (status >= 500) return 'CashMine is having trouble right now. Please try again.';
+  return `Something went wrong (HTTP ${status}).`;
+}
+`````
+
+</details>
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/claims/reconcile.ts`
+
+`````markdown
+import type { ClaimDto, ClaimStatus } from '../../lib/api/endpoints';
+import { parseUnits } from '../../lib/money';
+import type { Balance } from '../balances/model';
+
+export interface DisplayBalance extends Balance {
+  /** Server-confirmed claims applied on top of a snapshot that predates them. */
+  adjustedBy: ClaimDto[];
+}
+
+/** Change per unit of the claim amount: -1n, 0n or 1n for each balance field. */
+interface Effect {
+  available: bigint;
+  claiming: bigint;
+}
+
+const NO_EFFECT: Effect = { available: 0n, claiming: 0n };
+
+/** The snapshot predates the claim, so the amount hasn't left `available` yet. */
+const CREATED_AFTER_SNAPSHOT: Record<ClaimStatus, Effect> = {
+  pending: { available: -1n, claiming: 1n },
+  completed: { available: -1n, claiming: 0n },
+  failed: NO_EFFECT,
+};
+
+/** The snapshot still counts the claim in `claiming`, but it has settled since. */
+const SETTLED_AFTER_SNAPSHOT: Record<ClaimStatus, Effect> = {
+  pending: NO_EFFECT,
+  completed: { available: 0n, claiming: -1n },
+  failed: { available: 1n, claiming: -1n },
+};
+
+function effectOnSnapshot(claim: ClaimDto, snapshotAt: number): Effect {
+  if (Date.parse(claim.createdAt) > snapshotAt) return CREATED_AFTER_SNAPSHOT[claim.status];
+  if (Date.parse(claim.updatedAt) > snapshotAt) return SETTLED_AFTER_SNAPSHOT[claim.status];
+  return NO_EFFECT;
+}
+
+/**
+ * D2 option C: brings a snapshot up to date with claims the server has already confirmed. Once a
+ * newer snapshot arrives, every effect is zero again, so the balance never drops and jumps back.
+ */
+export function applyTrackedClaims(asOf: string, balances: Balance[], claims: ClaimDto[]): DisplayBalance[] {
+  const snapshotAt = Date.parse(asOf);
+  return balances.map((b) => {
+    let available = b.available;
+    let claiming = b.claiming;
+    const adjustedBy: ClaimDto[] = [];
+    for (const c of claims) {
+      if (c.asset !== b.asset) continue;
+      const effect = effectOnSnapshot(c, snapshotAt);
+      const parsed = parseUnits(c.amount, b.decimals);
+      if (effect === NO_EFFECT || !parsed.ok) continue;
+      available += effect.available * parsed.units;
+      claiming += effect.claiming * parsed.units;
+      adjustedBy.push(c);
+    }
+    // Should never happen; never show a negative balance.
+    if (available < 0n) available = 0n;
+    if (claiming < 0n) claiming = 0n;
+    return { ...b, available, claiming, adjustedBy };
+  });
+}
+
+`````
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/activity/activityLabels.ts`
+
+`````markdown
+import type { ActivityType } from '../../lib/api/endpoints';
+
+export const ACTIVITY_TITLE: Record<ActivityType, string> = {
+  accrual: 'Payback',
+  reversal: 'Reversal',
+  claim: 'Claim',
+};
+
+/** Titles naming the exchange, for the types that come from one. */
+export const EXCHANGE_TITLE: Partial<Record<ActivityType, (exchange: string) => string>> = {
+  accrual: (exchange) => `Payback from ${exchange}`,
+  reversal: (exchange) => `Reversed by ${exchange}`,
+};
+
+/** Accrual and reversal statuses; claim statuses reuse CLAIM_STATUS_LABEL. */
+export const ACTIVITY_STATUS_LABEL: Record<string, string> = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+};
+
+export const VOIDED_CLAIM_LABEL = 'Failed · not deducted';
+
+`````
+
+**🔧 Write** `/Users/viktor/Documents/projects/cashmine-task/src/features/activity/activityFormatting.ts`
+
+`````markdown
+import { isClaimStatus, type ActivityItemDto } from '../../lib/api/endpoints';
+import { CLAIM_STATUS_LABEL } from '../claims/claimLabels';
+import { ACTIVITY_STATUS_LABEL, ACTIVITY_TITLE, EXCHANGE_TITLE, VOIDED_CLAIM_LABEL } from './activityLabels';
+
+export type AmountTone = 'credit' | 'debit' | 'void';
+
+export function activityTitle(item: ActivityItemDto): string {
+  const withExchange = EXCHANGE_TITLE[item.type];
+  return item.exchange && withExchange ? withExchange(item.exchange) : ACTIVITY_TITLE[item.type];
+}
+
+/** A failed claim never left the balance, so its amount is shown as void, not as a debit. */
+export function isVoided(item: ActivityItemDto): boolean {
+  return item.type === 'claim' && item.status === 'failed';
+}
+
+export function amountTone(item: ActivityItemDto): AmountTone {
+  if (isVoided(item)) return 'void';
+  return item.amount.startsWith('-') ? 'debit' : 'credit';
+}
+
+/** Amounts are shown exactly as the API returns them; only an explicit '+' is added to credits. */
+export function activityAmountLabel(item: ActivityItemDto): string {
+  const sign = item.amount.startsWith('-') ? '' : '+';
+  return `${sign}${item.amount} ${item.asset}`;
+}
+
+export function activityStatusLabel(item: ActivityItemDto): string {
+  if (isVoided(item)) return VOIDED_CLAIM_LABEL;
+  if (item.type === 'claim' && isClaimStatus(item.status)) return CLAIM_STATUS_LABEL[item.status];
+  return ACTIVITY_STATUS_LABEL[item.status] ?? item.status;
+}
+
+/** Only claims created by this account carry the claim id needed for the status screen. */
+export function claimLink(item: ActivityItemDto): string | null {
+  return item.type === 'claim' && item.relatedId ? `/claims/${item.relatedId}` : null;
+}
+
+`````
+
+**🔧 Bash** — _Locate claim status list and status screen copy_
+
+`````bash
+grep -n "CLAIM_STATUSES" src/lib/api/endpoints.ts; sed -n '1,25p' src/app/claims/\[id\].tsx | sed -n '11,20p'
+`````
+
+<details><summary>result (Write)</summary>
+
+`````text
+The file /Users/viktor/Documents/projects/cashmine-task/src/features/claims/reconcile.ts has been updated successfully. (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Write)</summary>
+
+`````text
+File created successfully at: /Users/viktor/Documents/projects/cashmine-task/src/features/activity/activityLabels.ts (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Write)</summary>
+
+`````text
+The file /Users/viktor/Documents/projects/cashmine-task/src/features/activity/activityFormatting.ts has been updated successfully. (file state is current in your context — no need to Read it back)
+`````
+
+</details>
+
+<details><summary>result (Bash)</summary>
+
+`````text
+22:const CLAIM_STATUSES: readonly string[] = ['pending', 'completed', 'failed'];
+73:    isString(x.status) && CLAIM_STATUSES.includes(x.status) && isNullableString(x.failureReason) &&
+const SLOW_AFTER_MS = 60_000;
+
+const statusCopy = {
+  pending: { text: 'Processing — usually under 20 seconds', bg: colors.infoBg, fg: colors.info },
+  completed: { text: 'Completed', bg: colors.successBg, fg: colors.success },
+  failed: { text: 'Failed', bg: colors.dangerBg, fg: colors.danger },
+};
+
+export default function ClaimStatusScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:56:09 UTC
+
+Now the remaining call sites, the `isClaimStatus` guard, the validation messages and the API error copy:
+
+**🔧 Bash** — _Replace mappings with constants; verify_
+
+`````bash
+python3 -I - <<'EOF'
+def edit(p, pairs):
+    s = open(p).read()
+    for a, b in pairs:
+        assert a in s, (p, a[:70]); s = s.replace(a, b)
+    open(p, 'w').write(s)
+
+edit('src/lib/api/endpoints.ts', [
+ ("const CLAIM_STATUSES: readonly string[] = ['pending', 'completed', 'failed'];",
+  "const CLAIM_STATUSES: readonly string[] = ['pending', 'completed', 'failed'];\n\nexport function isClaimStatus(x: unknown): x is ClaimStatus {\n  return typeof x === 'string' && CLAIM_STATUSES.includes(x);\n}"),
+ ("isString(x.status) && CLAIM_STATUSES.includes(x.status) &&", "isClaimStatus(x.status) &&"),
+])
+
+edit('src/app/claims/[id].tsx', [
+ ("import { failureMessage, receiveRowLabel } from '../../features/claims/claimFormatting';",
+  "import { failureMessage } from '../../features/claims/claimFormatting';\nimport { CLAIM_PENDING_HINT, CLAIM_STATUS_LABEL, RECEIVE_ROW_LABEL } from '../../features/claims/claimLabels';"),
+ ("import { userMessage } from '../../lib/api/apiClient';", "import { userMessage } from '../../lib/api/apiClient';\nimport type { ClaimStatus } from '../../lib/api/endpoints';"),
+ ("""const statusCopy = {
+  pending: { text: 'Processing — usually under 20 seconds', bg: colors.infoBg, fg: colors.info },
+  completed: { text: 'Completed', bg: colors.successBg, fg: colors.success },
+  failed: { text: 'Failed', bg: colors.dangerBg, fg: colors.danger },
+};""", """const STATUS_TONE: Record<ClaimStatus, { bg: string; fg: string }> = {
+  pending: { bg: colors.infoBg, fg: colors.info },
+  completed: { bg: colors.successBg, fg: colors.success },
+  failed: { bg: colors.dangerBg, fg: colors.danger },
+};
+
+function statusTitle(status: ClaimStatus): string {
+  const label = CLAIM_STATUS_LABEL[status];
+  return status === 'pending' ? `${label} — ${CLAIM_PENDING_HINT}` : label;
+}"""),
+ ("  const st = statusCopy[claim.status];", "  const st = STATUS_TONE[claim.status];"),
+ ("{st.text}", "{statusTitle(claim.status)}"),
+ ("label={receiveRowLabel(claim.status)}", "label={RECEIVE_ROW_LABEL[claim.status]}"),
+])
+
+edit('src/app/index.tsx', [
+ ("import { failedClaimNotice } from '../features/claims/claimFormatting';",
+  "import { failedClaimNotice } from '../features/claims/claimFormatting';\nimport { CLAIM_STATUS_LABEL } from '../features/claims/claimLabels';"),
+ ("{c.amount} {c.asset} · {c.status === 'pending' ? 'processing…' : c.status}", "{c.amount} {c.asset} · {CLAIM_STATUS_LABEL[c.status]}"),
+])
+
+edit('src/features/claims/claimValidation.ts', [
+ ("""export function claimAmountErrorMessage(
+  error: ClaimAmountError,
+  ctx: { asset: string; decimals: number; minAmount: string; fee: string; available: string },
+): string {
+  switch (error) {
+    case 'empty':
+      return 'Enter an amount.';
+    case 'format':
+      return 'Enter a number like 0.5 (one decimal point, no spaces or thousands separators).';
+    case 'too_many_decimals':
+      return `${ctx.asset} allows up to ${ctx.decimals} decimal places.`;
+    case 'below_min':
+      return `The minimum claim is ${ctx.minAmount} ${ctx.asset}.`;
+    case 'above_available':
+      return `You have ${ctx.available} ${ctx.asset} available.`;
+    case 'fee_exceeds_amount':
+      return `The amount must be more than the ${ctx.fee} ${ctx.asset} fee.`;
+  }
+}""", """export interface ClaimMessageContext {
+  asset: string;
+  decimals: number;
+  minAmount: string;
+  fee: string;
+  available: string;
+}
+
+export const CLAIM_AMOUNT_ERROR_MESSAGE: Record<ClaimAmountError, (ctx: ClaimMessageContext) => string> = {
+  empty: () => 'Enter an amount.',
+  format: () => 'Enter a number like 0.5 (one decimal point, no spaces or thousands separators).',
+  too_many_decimals: (ctx) => `${ctx.asset} allows up to ${ctx.decimals} decimal places.`,
+  below_min: (ctx) => `The minimum claim is ${ctx.minAmount} ${ctx.asset}.`,
+  above_available: (ctx) => `You have ${ctx.available} ${ctx.asset} available.`,
+  fee_exceeds_amount: (ctx) => `The amount must be more than the ${ctx.fee} ${ctx.asset} fee.`,
+};"""),
+])
+
+edit('src/features/claims/components/ClaimForm.tsx', [
+ ("import { claimAmountErrorMessage, type ClaimCheck } from '../claimValidation';",
+  "import { CLAIM_AMOUNT_ERROR_MESSAGE, type ClaimCheck } from '../claimValidation';"),
+ ("{claimAmountErrorMessage(check.result.error, {", "{CLAIM_AMOUNT_ERROR_MESSAGE[check.result.error]({"),
+])
+
+edit('src/features/claims/__tests__/claimValidation.test.ts', [
+ ("import { checkClaim, claimAmountErrorMessage } from '../claimValidation';", "import { checkClaim, CLAIM_AMOUNT_ERROR_MESSAGE } from '../claimValidation';"),
+ ("describe('claimAmountErrorMessage', () => {", "describe('CLAIM_AMOUNT_ERROR_MESSAGE', () => {"),
+ ("expect(claimAmountErrorMessage(error, ctx)).toBe(text);", "expect(CLAIM_AMOUNT_ERROR_MESSAGE[error](ctx)).toBe(text);"),
+])
+
+edit('src/features/claims/__tests__/claimFormatting.test.ts', [
+ ("import { failedClaimNotice, failureMessage, receiveRowLabel } from '../claimFormatting';",
+  "import { failedClaimNotice, failureMessage } from '../claimFormatting';"),
+ ("""
+  it('never labels a failed claim as something you will receive', () => {
+    expect(receiveRowLabel('failed')).toBe('Not received');
+    expect(receiveRowLabel('pending')).toBe('To receive');
+    expect(receiveRowLabel('completed')).toBe('Received');
+  });
+""", ""),
+])
+
+edit('src/lib/api/apiClient.ts', [
+ ("""export function userMessage(e: unknown): string {
+  if (!(e instanceof ApiError)) return 'Something went wrong. Please try again.';
+  switch (e.kind) {
+    case 'network':
+      return "Can't reach CashMine. Check your connection.";
+    case 'timeout':
+      return 'CashMine is taking too long to respond. Please try again.';
+    case 'invalid_response':
+      return 'CashMine sent an unexpected response. Please try again.';
+  }
+  const status = e.status ?? 0;
+  if (status === 400) return e.code === 'VALIDATION' ? e.message : 'The request was not valid.';
+  if (status === 401) return 'Your token was rejected or has expired.';
+  if (status === 404) return "We couldn't find that.";
+  if (status === 409) return 'This request conflicts with an earlier one.';
+  if (status === 429) return 'Too many requests. Please wait a moment and try again.';
+  if (status >= 500) return 'CashMine is having trouble right now. Please try again.';
+  return `Something went wrong (HTTP ${status}).`;
+}""", """const UNKNOWN_ERROR_MESSAGE = 'Something went wrong. Please try again.';
+const SERVER_ERROR_MESSAGE = 'CashMine is having trouble right now. Please try again.';
+
+const ERROR_KIND_MESSAGE: Record<Exclude<ApiErrorKind, 'http'>, string> = {
+  network: "Can't reach CashMine. Check your connection.",
+  timeout: 'CashMine is taking too long to respond. Please try again.',
+  invalid_response: 'CashMine sent an unexpected response. Please try again.',
+};
+
+const HTTP_STATUS_MESSAGE: Record<number, string> = {
+  400: 'The request was not valid.',
+  401: 'Your token was rejected or has expired.',
+  404: "We couldn't find that.",
+  409: 'This request conflicts with an earlier one.',
+  429: 'Too many requests. Please wait a moment and try again.',
+};
+
+export function userMessage(e: unknown): string {
+  if (!(e instanceof ApiError)) return UNKNOWN_ERROR_MESSAGE;
+  if (e.kind !== 'http') return ERROR_KIND_MESSAGE[e.kind];
+  // The server's validation messages are written for users ("The minimum claim is 0.01 ETH").
+  if (e.code === 'VALIDATION') return e.message;
+  const status = e.status ?? 0;
+  if (status >= 500) return SERVER_ERROR_MESSAGE;
+  return HTTP_STATUS_MESSAGE[status] ?? `Something went wrong (HTTP ${status}).`;
+}"""),
+])
+EOF
+npx tsc --noEmit && echo "tsc OK"; npx eslint src && echo "lint clean"; npx jest 2>&1 | grep -E "Tests:|✕|●" | head
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+tsc OK
+lint clean
+Tests:       157 passed, 157 total
+`````
+
+</details>
+
+**🔧 Bash** — _Use status display constant; verify; confirm no switches_
+
+`````bash
+python3 -I - <<'EOF'
+p='src/app/claims/[id].tsx'; s=open(p).read()
+a="""const STATUS_TONE: Record<ClaimStatus, { bg: string; fg: string }> = {
+  pending: { bg: colors.infoBg, fg: colors.info },
+  completed: { bg: colors.successBg, fg: colors.success },
+  failed: { bg: colors.dangerBg, fg: colors.danger },
+};
+
+function statusTitle(status: ClaimStatus): string {
+  const label = CLAIM_STATUS_LABEL[status];
+  return status === 'pending' ? `${label} — ${CLAIM_PENDING_HINT}` : label;
+}"""
+b="""const STATUS_DISPLAY: Record<ClaimStatus, { title: string; bg: string; fg: string }> = {
+  pending: { title: `${CLAIM_STATUS_LABEL.pending} — ${CLAIM_PENDING_HINT}`, bg: colors.infoBg, fg: colors.info },
+  completed: { title: CLAIM_STATUS_LABEL.completed, bg: colors.successBg, fg: colors.success },
+  failed: { title: CLAIM_STATUS_LABEL.failed, bg: colors.dangerBg, fg: colors.danger },
+};"""
+assert a in s; s=s.replace(a,b)
+for x,y in [("  const st = STATUS_TONE[claim.status];","  const st = STATUS_DISPLAY[claim.status];"),("{statusTitle(claim.status)}","{st.title}")]:
+    assert x in s; s=s.replace(x,y)
+open(p,'w').write(s)
+EOF
+npx tsc --noEmit && echo "tsc OK"; npx eslint src && echo "lint clean"; npx jest 2>&1 | grep -E "Tests:|✕"; grep -rn "switch (" src | grep -v __tests__ || echo "no switch mappings left"; date -u +%H:%M
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+tsc OK
+lint clean
+Tests:       157 passed, 157 total
+no switch mappings left
+08:56
+`````
+
+</details>
+
+**🔧 Bash** — _Export refactored web build_
+
+`````bash
+rm -rf dist && npx expo export --platform web 2>&1 | grep -E "^Exported|rror:"
+`````
+
+**🔧 Bash** — _Serve refactored build locally on port 8099_
+
+`````bash
+npx expo serve --port 8099
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+Exported: dist
+`````
+
+</details>
+
+<details><summary>result (Bash)</summary>
+
+`````text
+Command running in background with ID: b3klsdl1p. Output is being written to: /private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/tasks/b3klsdl1p.output. You will be notified when it completes — do not poll that file or sleep while waiting. Read the file only if the user asks for progress, or if you need a line it prints before you can go on, such as a server's ready line or port.
+`````
+
+</details>
+
+**🔧 Bash** — _Wait for server, rerun browser pass_
+
+`````bash
+S=/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad; for i in 1 2 3 4 5 6 7 8 9 10; do curl -s -o /dev/null http://localhost:8099/ && break; sleep 1; done; rm -rf $S/shots && mkdir -p $S/shots && cd $S/pw && node flow.js http://localhost:8099 $S/token $S/shots 2>&1 | grep -vF "$(cat $S/token)"
+`````
+
+<details><summary>result (Bash)</summary>
+
+`````text
+08:57:16 shot 01-token
+08:57:17 shot 02-bad-token
+08:57:19 shot 03-home
+08:57:21 shot 04-activity
+08:57:22 activity rows rendered: 31
+08:57:23 shot 05-activity-end
+08:57:25 shot 06-claim-form
+08:57:25 typed "10,000" -> field shows: "10.000"
+08:57:25 shot 07-comma
+08:57:25 shot 08-below-min
+08:57:26 Max fills: "855.283207"
+08:57:26 Review enabled without destination: false
+08:57:26 shot 09-max-no-destination
+08:57:27 shot 10-review
+08:57:29 shot 11-status-pending
+08:57:40 shot 12-status-final
+08:57:41 shot 13-home-after-claim
+08:57:43 shot 14-after-reload
+08:57:44 history length after cancel: 3
+08:57:44 shot 15-after-cancel
+08:57:44 console issues: 
+  error: Failed to load resource: the server responded with a status of 401 ()
+  error: Failed to load resource: the server responded with a status of 503 ()
+Shell cwd was reset to /Users/viktor/Documents/projects/cashmine-task
+`````
+
+</details>
+
+## 🤖 Claude — 2026-10-23 08:58:03 UTC
+
+Every step passed. The console errors are again the expected 401 and one server 503 that was retried. I'll check the two screens whose copy now comes from the constants:
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/11-status-pending.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
+
+**🔧 Read**
+
+`````json
+{
+  "file_path": "/private/tmp/claude-501/-Users-viktor-Documents-projects-cashmine-task/030c4e6a-119d-45af-b77d-c8093fb57417/scratchpad/shots/12-status-final.png"
+}
+`````
+
+<details><summary>result (Read)</summary>
+
+`````text
+
+`````
+
+</details>
